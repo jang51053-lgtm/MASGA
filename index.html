@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>보물선 크래프트: 나만의 차량 모험</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1e272e; color: white; user-select: none; font-family: 'Inter', sans-serif; }
+        #build-ui, #map-edit-ui, #online-ui, #play-ui, #quiz-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .interactive { pointer-events: auto; }
+        ::-webkit-scrollbar { display: none; }
+        #build-canvas, #edit-canvas { cursor: crosshair; }
+        .tool-active { background-color: #3867d6 !important; border-color: #4b7bec !important; }
+        .tab-active { border-bottom: 4px solid #3498db; color: #3498db; }
+        .disabled-btn { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
+    </style>
+</head>
+<body>
+
+    <!-- 캔버스 및 물리엔진 컨테이너 -->
+    <canvas id="build-canvas" class="absolute top-0 left-0 w-full h-full z-10"></canvas>
+    <canvas id="edit-canvas" class="absolute top-0 left-0 w-full h-full z-10 hidden"></canvas>
+    <div id="matter-container" class="absolute top-0 left-0 w-full h-full z-0 hidden"></div>
+
+    <!-- 1. 상태 UI (항상 표시) -->
+    <div id="status-ui" class="absolute top-6 right-6 z-50 bg-gray-900 bg-opacity-90 text-white p-4 rounded-xl shadow-lg border border-gray-700 min-w-[200px] interactive transition-all">
+        <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-2">
+            <span class="font-bold text-yellow-400 text-lg">💰 골드:</span>
+            <span id="gold-count" class="font-bold text-xl text-yellow-400">300</span>
+        </div>
+        <div class="space-y-1 text-sm font-semibold">
+            <div class="flex justify-between"><span class="text-blue-300">💎 보물:</span><span id="treasure-count">0</span></div>
+            <div class="flex justify-between"><span class="text-green-300">✨ 경험치:</span><span id="exp-count">0</span></div>
+        </div>
+    </div>
+
+    <!-- 2. 네비게이션 탭 -->
+    <div id="top-nav" class="absolute top-0 left-1/2 transform -translate-x-1/2 z-50 bg-gray-800 rounded-b-xl shadow-lg border-b border-l border-r border-gray-700 flex interactive px-4 py-2 gap-4">
+        <button class="tab-btn tab-active font-bold px-4 py-2 hover:bg-gray-700 rounded transition text-gray-300" onclick="switchMode('build')">🛠️ 차량 제작</button>
+        <button class="tab-btn font-bold px-4 py-2 hover:bg-gray-700 rounded transition text-gray-300" onclick="switchMode('edit')">🗺️ 맵 에디터</button>
+        <button class="tab-btn font-bold px-4 py-2 hover:bg-gray-700 rounded transition text-gray-300" onclick="switchMode('online')">🌐 온라인 의뢰</button>
+    </div>
+
+    <!-- 3. 차량 제작소 UI -->
+    <div id="build-ui" class="z-20 h-full flex p-6 pt-20 gap-6 pointer-events-none">
+        <div class="interactive bg-gray-800 bg-opacity-95 p-5 rounded-xl shadow-2xl border border-gray-600 flex flex-col w-[350px] overflow-y-auto pointer-events-auto">
+            <div class="flex justify-between items-end mb-4">
+                <h1 class="text-2xl font-black text-blue-400 tracking-tight">차량 제작소</h1>
+                <span id="max-stage-badge" class="bg-blue-600 text-xs px-2 py-1 rounded font-bold">기록: St.1</span>
+            </div>
+
+            <button class="w-full mb-4 px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-lg shadow transition flex justify-center items-center gap-2" onclick="openQuiz()">
+                ➕ 수학 퀴즈로 돈 벌기
+            </button>
+
+            <!-- 커스텀 페인트 및 프레임 조절 -->
+            <div class="bg-gray-700 p-3 rounded-lg mb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-gray-300 font-bold text-sm">프레임 색상</h3>
+                    <input type="color" id="paint-color" value="#8e44ad" class="cursor-pointer w-8 h-8 border-0 rounded p-0 bg-transparent">
+                </div>
+                <div class="flex items-center gap-3 mb-2">
+                    <label class="text-xs text-gray-400 w-8">길이</label>
+                    <input type="range" id="frame-length-slider" min="100" max="600" value="300" class="cursor-pointer flex-grow h-2 bg-gray-600 rounded-lg appearance-none">
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="text-xs text-gray-400 w-8">두께</label>
+                    <input type="range" id="frame-height-slider" min="20" max="150" value="40" class="cursor-pointer flex-grow h-2 bg-gray-600 rounded-lg appearance-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button id="tool-pan" class="tool-btn interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-blue-300 text-sm font-bold" onclick="selectTool('pan')">🖐️ 화면 이동</button>
+                <button id="tool-eraser" class="tool-btn interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-red-900 transition text-red-400 text-sm font-bold" onclick="selectTool('eraser')">🗑️ 환불(제거)</button>
+            </div>
+
+            <h3 class="text-gray-300 font-bold mb-2 text-sm border-b border-gray-600 pb-1">부품 상점</h3>
+            <div class="flex flex-col gap-2 flex-grow mb-4 overflow-y-auto">
+                <button id="tool-wheel-circle" class="tool-btn tool-active interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center" onclick="selectTool('wheel-circle')">
+                    <span>⚪ 기본 바퀴</span><span class="text-yellow-400 text-xs">10 G</span>
+                </button>
+                <button id="tool-body-block" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center" onclick="selectTool('body-block')">
+                    <span>🟫 무게추 바디</span><span class="text-yellow-400 text-xs">15 G</span>
+                </button>
+                <button id="tool-spring" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-green-300" onclick="selectTool('spring')">
+                    <span>〰️ 점프 스프링</span><span class="text-yellow-400 text-xs">50 G</span>
+                </button>
+                <button id="tool-booster" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-red-300 disabled-btn" onclick="selectTool('booster')">
+                    <span>🚀 로켓 부스터 (St.3)</span><span class="text-yellow-400 text-xs">80 G</span>
+                </button>
+                <button id="tool-bulldozer" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-yellow-300 disabled-btn" onclick="selectTool('bulldozer')">
+                    <span>🚜 불도저 삽 (St.4)</span><span class="text-yellow-400 text-xs">100 G</span>
+                </button>
+                <button id="tool-cannon" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-purple-300 disabled-btn" onclick="selectTool('cannon')">
+                    <span>💥 파괴 대포 (St.5)</span><span class="text-yellow-400 text-xs">150 G</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-auto">
+                <button class="interactive px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition" onclick="saveVehicle()">💾 도면 저장</button>
+                <button class="interactive px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white text-sm font-bold rounded-lg transition" onclick="loadVehicle()">📂 불러오기</button>
+            </div>
+        </div>
+
+        <button class="interactive absolute bottom-8 right-8 px-10 py-5 bg-green-600 hover:bg-green-500 text-white font-black rounded-2xl shadow-[0_0_30px_rgba(34,197,94,0.6)] transition-all transform hover:scale-105 hover:-translate-y-2 text-2xl border-4 border-green-400 flex items-center gap-3 z-50 pointer-events-auto" onclick="startPlay()">
+            🚀 모험 시작하기
+        </button>
+    </div>
+
+    <!-- 4. 맵 에디터 UI -->
+    <div id="map-edit-ui" class="z-20 h-full flex p-6 pt-20 gap-6 hidden pointer-events-none">
+        <div class="interactive bg-gray-800 bg-opacity-95 p-5 rounded-xl shadow-2xl border border-gray-600 flex flex-col w-[300px] pointer-events-auto">
+            <h1 class="text-xl font-black text-purple-400 mb-2">🗺️ 맵 에디터</h1>
+            <p class="text-xs text-gray-400 mb-3">장애물을 배치하여 맵을 만드세요! 마우스 휠로 확대/축소, 우클릭 드래그로 화면 이동, 아래 미니맵 클릭으로 순간 이동할 수 있어요.</p>
+            <div class="grid grid-cols-3 gap-2 mb-4">
+                <button class="interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-sm font-bold" onclick="editZoom(1.25)" title="확대">🔍+</button>
+                <button class="interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-sm font-bold" onclick="editZoom(0.8)" title="축소">🔍-</button>
+                <button class="interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-sm font-bold" onclick="editFitToMap()" title="전체 맵 보기">↔️전체</button>
+            </div>
+            <div class="flex flex-col gap-2 flex-grow">
+                <button id="edit-tool-platform" class="edit-btn tool-active interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left" onclick="selectEditTool('platform')">🟩 기본 지형 (드래그)</button>
+                <button id="edit-tool-lava" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left" onclick="selectEditTool('lava')">🔥 용암 (드래그)</button>
+                <button id="edit-tool-treasure" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left" onclick="selectEditTool('treasure')">💎 보물 (클릭)</button>
+                <button id="edit-tool-checkpoint" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left text-yellow-300" onclick="selectEditTool('checkpoint')">🏁 결승선 (클릭)</button>
+                <button id="edit-tool-eraser" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-red-900 transition text-red-400 text-left mt-4" onclick="selectEditTool('eraser')">🗑️ 지우기</button>
+            </div>
+            <div class="flex flex-col gap-2 mt-4">
+                <button class="interactive px-4 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow transition" onclick="clearEditMap()">전체 지우기</button>
+                <button class="interactive px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow transition" onclick="testMyMap()">🕹️ 내 맵 테스트하기</button>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-600 flex flex-col gap-2">
+                <h3 class="text-gray-300 font-bold text-sm">🌐 온라인에 공유하기</h3>
+                <input id="share-map-name" type="text" maxlength="20" placeholder="맵 이름" class="interactive px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-sm text-white outline-none focus:border-blue-500">
+                <input id="share-author-name" type="text" maxlength="12" placeholder="제작자 닉네임" class="interactive px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-sm text-white outline-none focus:border-blue-500">
+                <button id="share-map-btn" class="interactive px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow transition" onclick="shareMapOnline()">📤 온라인에 공유</button>
+                <p id="share-status" class="text-xs text-gray-400"></p>
+            </div>
+        </div>
+        <div id="edit-minimap-bar" class="interactive absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-90 rounded-xl border border-gray-600 shadow-lg p-3 flex flex-col gap-2" style="width:70%; max-width:900px;">
+            <div class="flex justify-between items-center text-xs text-gray-300 font-bold">
+                <span>🗺️ 전체 맵 미리보기 (클릭/드래그로 이동)</span>
+                <span id="edit-map-length">길이: 0px</span>
+            </div>
+            <canvas id="edit-minimap" width="800" height="50" class="w-full rounded bg-sky-200 cursor-pointer"></canvas>
+        </div>
+    </div>
+
+    <!-- 5. 온라인 의뢰 UI -->
+    <div id="online-ui" class="z-20 h-full flex flex-col items-center justify-center p-6 hidden pointer-events-none">
+        <div class="interactive bg-gray-800 bg-opacity-95 p-8 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8)] border-2 border-blue-500 w-[800px] max-h-[80vh] overflow-y-auto pointer-events-auto">
+            <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-4">
+                <h1 class="text-3xl font-black text-blue-400 tracking-tight">🌐 유저 맵 도전 (의뢰)</h1>
+                <button class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded font-bold transition" onclick="refreshOnlineMaps()">새로고침</button>
+            </div>
+            <p id="online-status" class="text-xs text-gray-400 mb-4"></p>
+            <div id="online-map-list" class="grid grid-cols-2 gap-4"></div>
+        </div>
+    </div>
+
+    <!-- 6. 플레이 모드 UI -->
+    <div id="play-ui" class="z-20 h-full flex flex-col justify-between p-6 hidden pointer-events-none">
+        <div class="flex justify-between items-start w-[350px]">
+            <div class="bg-gray-800 bg-opacity-80 p-4 rounded-xl shadow-lg border border-gray-700 backdrop-blur-sm pointer-events-auto">
+                <h2 id="stage-text" class="text-xl font-black text-green-400 mb-2">🏁 스테이지 1</h2>
+                <div class="text-sm text-gray-300 space-y-1 font-bold">
+                    <p>◀ ▶ / A D : 바퀴 굴리기 / 공중 회전</p>
+                    <p class="text-green-300">SPACE : 다중 점프 (스프링)</p>
+                    <p class="text-red-300">SHIFT : 부스터 가속</p>
+                    <p class="text-purple-300">F : 대포 발사</p>
+                </div>
+            </div>
+        </div>
+        <div class="pointer-events-auto absolute bottom-6 left-6">
+            <button class="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg transition" onclick="switchMode('build')">🛑 제작소로 복귀</button>
+        </div>
+        <div id="message-box" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-10 py-5 rounded-full font-black text-3xl shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-all duration-500 opacity-0 scale-90 z-50 text-center border-4 border-white pointer-events-none">메시지</div>
+    </div>
+
+    <!-- 7. 수학 퀴즈 UI -->
+    <div id="quiz-ui" class="fixed inset-0 z-[100] bg-black bg-opacity-80 hidden justify-center items-center pointer-events-auto">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border-2 border-yellow-500 max-w-md w-full text-center">
+            <h2 class="text-2xl font-black text-yellow-400 mb-2">💰 수학 퀴즈</h2>
+            <p class="text-gray-300 mb-6 text-sm">문제를 맞히면 골드를 획득합니다!</p>
+            <div id="quiz-question" class="text-4xl font-bold text-white mb-6 bg-gray-700 py-4 rounded-lg">12 + 34 = ?</div>
+            <!-- user-select: auto; 를 주어 텍스트 입력 불가 버그를 해결 -->
+            <input type="number" id="quiz-answer" style="user-select: auto;" class="w-full bg-gray-900 text-white text-center text-2xl font-bold py-3 px-4 rounded-lg mb-6 border border-gray-600 focus:border-yellow-500 outline-none" autocomplete="off">
+            <div class="flex gap-3">
+                <button class="flex-1 py-3 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg transition" onclick="closeQuiz()">취소</button>
+                <button class="flex-1 py-3 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-lg transition" onclick="submitQuiz()">제출</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const PRICES = { 'wheel-circle': 10, 'body-block': 15, 'spring': 50, 'booster': 80, 'bulldozer': 100, 'cannon': 150 };
+    const WHEEL_RADIUS = 25; const BODY_BLOCK_SIZE = 40;
+    let frameWidth = 300, frameHeight = 40;
+    let offsetX = window.innerWidth/2, offsetY = window.innerHeight/2;
+    let currentMode = 'build'; let currentTool = 'wheel-circle'; let paintColor = '#8e44ad';
+    let vehicleParts = []; let customMapData = [];
+    let playerGold = 500; let treasureCount = 0; let expCount = 0;
+    let currentStage = 1; let maxStageReached = 1;
+
+    // ==================== Firebase (온라인 맵 공유) ====================
+    // Firestore 보안 규칙에서 'maps' 컬렉션에 읽기/쓰기를 허용해야 실제로 동작합니다.
+    const firebaseConfig = {
+        apiKey: "AIzaSyDXBaCwJF7oMiH7EGV11cTJ96ZMSWQx4zA",
+        authDomain: "hakmin-282fa.firebaseapp.com",
+        projectId: "hakmin-282fa",
+        storageBucket: "hakmin-282fa.firebasestorage.app",
+        messagingSenderId: "842602098125",
+        appId: "1:842602098125:web:e101cc8f3eca2c9f276884",
+        measurementId: "G-HE7HF9S81B"
+    };
+    let db = null;
+    try {
+        const fbApp = firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore(fbApp);
+    } catch (e) {
+        console.error('Firebase 초기화 실패:', e);
+    }
+
+    // 디테일한 고퀄리티 기계 부품 SVG
+    const RAW_SVGS = {
+        'wheel-circle': `<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><circle cx="25" cy="25" r="24" fill="#2d3436" stroke="#000" stroke-width="2"/><circle cx="25" cy="25" r="16" fill="#636e72"/><circle cx="25" cy="25" r="12" fill="#b2bec3" stroke="#2d3436" stroke-width="1"/><circle cx="25" cy="15" r="3" fill="#2d3436"/><circle cx="25" cy="35" r="3" fill="#2d3436"/><circle cx="15" cy="25" r="3" fill="#2d3436"/><circle cx="35" cy="25" r="3" fill="#2d3436"/><circle cx="25" cy="25" r="4" fill="#e74c3c"/></svg>`,
+        'body-block': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" fill="#7f8c8d" stroke="#2c3e50" stroke-width="2" rx="4"/><line x1="1" y1="1" x2="39" y2="39" stroke="#95a5a6" stroke-width="2"/><line x1="39" y1="1" x2="1" y2="39" stroke="#95a5a6" stroke-width="2"/><circle cx="6" cy="6" r="2" fill="#bdc3c7"/><circle cx="34" cy="6" r="2" fill="#bdc3c7"/><circle cx="6" cy="34" r="2" fill="#bdc3c7"/><circle cx="34" cy="34" r="2" fill="#bdc3c7"/><circle cx="20" cy="20" r="10" fill="#34495e"/><text x="20" y="24" font-family="Arial" font-size="11" font-weight="bold" fill="#f1c40f" text-anchor="middle">KG</text></svg>`,
+        'booster': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M 20 5 L 35 15 L 35 30 L 20 35 L 5 30 L 5 15 Z" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2"/><path d="M 20 12 L 12 18 L 12 28 L 20 32 L 28 28 L 28 18 Z" fill="#2c3e50"/><polygon points="12,30 20,40 28,30" fill="#e74c3c"/><polygon points="15,32 20,38 25,32" fill="#f1c40f"/></svg>`,
+        'spring': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="5" y="32" width="30" height="6" fill="#34495e" rx="2"/><rect x="10" y="2" width="20" height="5" fill="#34495e" rx="1"/><path d="M 15 32 Q -5 22 20 18 T 20 8 Q 35 5 15 5" fill="none" stroke="#1abc9c" stroke-width="6" stroke-linecap="round"/></svg>`,
+        'bulldozer': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M 5 2 L 25 5 L 35 20 L 25 35 L 5 38 Z" fill="#f1c40f" stroke="#e67e22" stroke-width="2"/><path d="M 8 5 L 20 8 L 25 20 L 20 32 L 8 35 Z" fill="#d35400"/><circle cx="15" cy="15" r="3" fill="#c0392b"/><circle cx="15" cy="25" r="3" fill="#c0392b"/></svg>`,
+        'cannon': `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="20" viewBox="0 0 60 20"><rect x="0" y="2" width="20" height="16" fill="#2d3436" rx="3"/><rect x="15" y="5" width="40" height="10" fill="#636e72"/><rect x="55" y="2" width="5" height="16" fill="#c0392b" rx="1"/><rect x="15" y="6" width="35" height="2" fill="#b2bec3"/><circle cx="10" cy="10" r="4" fill="#e74c3c"/></svg>`,
+        'flag': `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120" viewBox="0 0 80 120"><path d="M 10 110 L 50 110 Q 60 110 60 120 L 0 120 Q 0 110 10 110 Z" fill="#7f8c8d" stroke="#2c3e50" stroke-width="2"/><rect x="25" y="10" width="10" height="100" fill="#bdc3c7" stroke="#2c3e50" stroke-width="2"/><rect x="25" y="5" width="10" height="10" rx="5" fill="#95a5a6" stroke="#2c3e50" stroke-width="2"/><polygon points="35,15 80,35 35,55" fill="#e74c3c" stroke="#c0392b" stroke-width="2"/></svg>`,
+        'gem': `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><polygon points="16,2 29,12 24,30 8,30 3,12" fill="#3fa9e8" stroke="#0f4c75" stroke-width="2"/><polygon points="16,2 29,12 16,13" fill="#8fe0ff"/><polygon points="16,2 3,12 16,13" fill="#5fc4f2"/><polygon points="3,12 16,13 8,30" fill="#1c6fae"/><polygon points="29,12 16,13 24,30" fill="#2585c2"/><polygon points="8,30 16,13 24,30" fill="#0f4c75"/></svg>`,
+        'coin': `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="14" fill="#f1c40f" stroke="#c9960a" stroke-width="2"/><circle cx="15" cy="15" r="10" fill="#f9d71c"/><text x="15" y="20" font-family="Arial" font-size="14" font-weight="bold" fill="#c9960a" text-anchor="middle">G</text></svg>`,
+        'slime': `<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><ellipse cx="25" cy="30" rx="22" ry="17" fill="#2ecc71" stroke="#219150" stroke-width="3"/><ellipse cx="25" cy="21" rx="16" ry="11" fill="#58e08c" opacity="0.55"/><circle cx="17" cy="27" r="4.5" fill="white"/><circle cx="33" cy="27" r="4.5" fill="white"/><circle cx="17" cy="28" r="2.2" fill="#1b1b1b"/><circle cx="33" cy="28" r="2.2" fill="#1b1b1b"/><path d="M17 37 Q25 42 33 37" stroke="#1b1b1b" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`,
+        'slime-attached': `<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"><ellipse cx="25" cy="30" rx="22" ry="17" fill="#8e44ad" stroke="#5e3370" stroke-width="3"/><ellipse cx="25" cy="21" rx="16" ry="11" fill="#b57edc" opacity="0.55"/><circle cx="17" cy="27" r="4.5" fill="white"/><circle cx="33" cy="27" r="4.5" fill="white"/><circle cx="17" cy="28" r="2.2" fill="#1b1b1b"/><circle cx="33" cy="28" r="2.2" fill="#1b1b1b"/><path d="M18 39 Q25 34 32 39" stroke="#1b1b1b" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`
+    };
+    const ASSET_URIS = {}; const ASSET_IMAGES = {};
+    for (let key in RAW_SVGS) {
+        ASSET_URIS[key] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(RAW_SVGS[key])}`;
+        ASSET_IMAGES[key] = new Image(); ASSET_IMAGES[key].src = ASSET_URIS[key];
+        ASSET_IMAGES[key].onload = () => drawBuildMode();
+    }
+
+    let currentFrameImg = new Image();
+    function getFrameSVGDataURI(w, h, color) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${color}" stroke="#2d3436" stroke-width="4" rx="8"/><line x1="10" y1="${h/2}" x2="${w-10}" y2="${h/2}" stroke="#2d3436" stroke-width="3" stroke-dasharray="10,6"/><circle cx="15" cy="${h/2}" r="5" fill="#fff" opacity="0.6"/><circle cx="${w-15}" cy="${h/2}" r="5" fill="#fff" opacity="0.6"/></svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+    function updateFrameCache() { currentFrameImg.src = getFrameSVGDataURI(frameWidth, frameHeight, paintColor); currentFrameImg.onload = () => drawBuildMode(); }
+
+    // 지형/장애물을 실제 게임처럼 보이도록 각 부품 크기에 맞춰 타일링되는 텍스처 SVG를 즉석에서 생성합니다.
+    function getGroundSVGDataURI(w, h) {
+        w = Math.max(1, w); h = Math.max(1, h);
+        const grassH = Math.min(26, h * 0.4);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+            <defs>
+                <pattern id="dirt" width="42" height="42" patternUnits="userSpaceOnUse">
+                    <rect width="42" height="42" fill="#8b5a2b"/>
+                    <circle cx="10" cy="14" r="4" fill="#7a4a22"/>
+                    <circle cx="30" cy="30" r="5" fill="#6f4520"/>
+                    <circle cx="22" cy="6" r="3" fill="#9c6b3e"/>
+                    <circle cx="36" cy="18" r="2.5" fill="#71481f"/>
+                </pattern>
+                <pattern id="grass" width="34" height="34" patternUnits="userSpaceOnUse">
+                    <rect width="34" height="34" fill="#7ec850"/>
+                    <path d="M2 34 L6 22 L10 34 Z" fill="#66ad3d"/>
+                    <path d="M14 34 L18 20 L22 34 Z" fill="#6bb23f"/>
+                    <path d="M26 34 L30 24 L34 34 Z" fill="#66ad3d"/>
+                </pattern>
+            </defs>
+            <rect x="0" y="0" width="${w}" height="${h}" fill="url(#dirt)"/>
+            <rect x="0" y="0" width="${w}" height="${grassH}" fill="url(#grass)"/>
+            <rect x="0" y="${Math.max(0, grassH - 3)}" width="${w}" height="4" fill="#4f3116"/>
+            <rect x="0" y="0" width="${w}" height="${h}" fill="none" stroke="#3d2711" stroke-width="3"/>
+        </svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+    function getLavaSVGDataURI(w, h) {
+        w = Math.max(1, w); h = Math.max(1, h);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+            <defs>
+                <pattern id="lavaBase" width="46" height="46" patternUnits="userSpaceOnUse">
+                    <rect width="46" height="46" fill="#c0392b"/>
+                    <circle cx="12" cy="14" r="9" fill="#e67e22" opacity="0.85"/>
+                    <circle cx="34" cy="30" r="11" fill="#f39c12" opacity="0.75"/>
+                    <circle cx="36" cy="8" r="6" fill="#f1c40f" opacity="0.6"/>
+                </pattern>
+                <pattern id="crust" width="60" height="60" patternUnits="userSpaceOnUse">
+                    <path d="M0 10 L15 2 L30 12 L45 3 L60 14" stroke="#5a1d10" stroke-width="3" fill="none" opacity="0.5"/>
+                    <path d="M0 40 L18 32 L36 44 L60 34" stroke="#5a1d10" stroke-width="3" fill="none" opacity="0.4"/>
+                </pattern>
+            </defs>
+            <rect x="0" y="0" width="${w}" height="${h}" fill="url(#lavaBase)"/>
+            <rect x="0" y="0" width="${w}" height="${h}" fill="url(#crust)"/>
+            <rect x="0" y="0" width="${w}" height="6" fill="#ffce54" opacity="0.7"/>
+            <rect x="0" y="0" width="${w}" height="${h}" fill="none" stroke="#7a2810" stroke-width="3"/>
+        </svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+    function getCrateSVGDataURI(w, h) {
+        w = Math.max(1, w); h = Math.max(1, h);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+            <defs>
+                <pattern id="wood" width="38" height="38" patternUnits="userSpaceOnUse">
+                    <rect width="38" height="38" fill="#c9822a"/>
+                    <rect y="0" width="38" height="4" fill="#a8631a"/>
+                    <rect y="17" width="38" height="4" fill="#a8631a"/>
+                    <rect y="34" width="38" height="4" fill="#a8631a"/>
+                </pattern>
+            </defs>
+            <rect x="0" y="0" width="${w}" height="${h}" fill="url(#wood)"/>
+            <rect x="3" y="3" width="${Math.max(0, w - 6)}" height="${Math.max(0, h - 6)}" fill="none" stroke="#7a4a12" stroke-width="3"/>
+            <line x1="0" y1="0" x2="${w}" y2="${h}" stroke="#7a4a12" stroke-width="3" opacity="0.5"/>
+            <line x1="${w}" y1="0" x2="0" y2="${h}" stroke="#7a4a12" stroke-width="3" opacity="0.5"/>
+        </svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+
+    function showToast(text, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-24 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full font-bold text-white shadow-xl z-[200] transition-all duration-300 opacity-0 scale-90 border-2 border-white ${type === 'error' ? 'bg-red-600' : 'bg-blue-600'}`;
+        toast.textContent = text; document.body.appendChild(toast);
+        setTimeout(() => { toast.classList.replace('opacity-0', 'opacity-100'); toast.classList.replace('scale-90', 'scale-100'); }, 10);
+        setTimeout(() => { toast.classList.replace('opacity-100', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 2000);
+    }
+
+    function updateStatusUI() {
+        document.getElementById('gold-count').textContent = playerGold;
+        document.getElementById('treasure-count').textContent = treasureCount;
+        document.getElementById('exp-count').textContent = expCount;
+        document.getElementById('max-stage-badge').textContent = `기록: St.${maxStageReached}`;
+        if (maxStageReached >= 3) document.getElementById('tool-booster').classList.remove('disabled-btn');
+        if (maxStageReached >= 4) document.getElementById('tool-bulldozer').classList.remove('disabled-btn');
+        if (maxStageReached >= 5) document.getElementById('tool-cannon').classList.remove('disabled-btn');
+    }
+
+    let currentQuizAnswer = 0;
+    function openQuiz() {
+        document.getElementById('quiz-ui').classList.remove('hidden');
+        document.getElementById('quiz-ui').classList.add('flex');
+        generateQuiz();
+    }
+    function closeQuiz() {
+        document.getElementById('quiz-ui').classList.add('hidden');
+        document.getElementById('quiz-ui').classList.remove('flex');
+        document.getElementById('quiz-answer').value = '';
+    }
+    function generateQuiz() {
+        const num1 = Math.floor(Math.random() * 50) + 10;
+        const num2 = Math.floor(Math.random() * 50) + 10;
+        const ops = ['+', '-', '*'];
+        const op = ops[Math.floor(Math.random() * 3)];
+        document.getElementById('quiz-question').textContent = `${num1} ${op} ${num2} = ?`;
+
+        if (op === '+') currentQuizAnswer = num1 + num2;
+        else if (op === '-') currentQuizAnswer = num1 - num2;
+        else if (op === '*') currentQuizAnswer = num1 * num2;
+
+        setTimeout(() => document.getElementById('quiz-answer').focus(), 100);
+    }
+    document.getElementById('quiz-answer').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitQuiz(); });
+    function submitQuiz() {
+        if (parseInt(document.getElementById('quiz-answer').value) === currentQuizAnswer) {
+            const reward = Math.floor(Math.random() * 50) + 30;
+            playerGold += reward; updateStatusUI(); showToast(`정답! 💰 ${reward} 골드 획득`); closeQuiz();
+        } else { showToast("틀렸습니다!", "error"); document.getElementById('quiz-answer').value = ''; }
+    }
+
+    // 대화 미리보기 환경에서는 localStorage가 안정적이지 않으므로 메모리 변수에 저장합니다.
+    let savedVehicleData = null;
+    function saveVehicle() { savedVehicleData = { w: frameWidth, h: frameHeight, c: paintColor, p: JSON.parse(JSON.stringify(vehicleParts)) }; showToast("도면이 저장되었습니다!"); }
+    function loadVehicle() {
+        if (savedVehicleData) { const d = savedVehicleData; frameWidth = d.w; frameHeight = d.h; paintColor = d.c; vehicleParts = JSON.parse(JSON.stringify(d.p)); document.getElementById('frame-length-slider').value = frameWidth; document.getElementById('frame-height-slider').value = frameHeight; document.getElementById('paint-color').value = paintColor; updateFrameCache(); showToast("도면을 불러왔습니다!"); }
+        else { showToast("저장된 도면이 없습니다.", "error"); }
+    }
+
+    function switchMode(mode) {
+        // 플레이 화면을 벗어날 때 백그라운드에서 물리 시뮬레이션이 계속 돌지 않도록 정리합니다.
+        if (currentMode === 'play' && mode !== 'play') { stopPhysicsEngine(); }
+        currentMode = mode;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+        ['build-canvas', 'edit-canvas', 'matter-container', 'build-ui', 'map-edit-ui', 'online-ui', 'play-ui'].forEach(id => document.getElementById(id).classList.add('hidden'));
+
+        if (mode === 'build') { document.querySelectorAll('.tab-btn')[0].classList.add('tab-active'); document.getElementById('build-canvas').classList.remove('hidden'); document.getElementById('build-ui').classList.remove('hidden'); document.getElementById('top-nav').classList.remove('hidden'); drawBuildMode(); }
+        else if (mode === 'edit') { document.querySelectorAll('.tab-btn')[1].classList.add('tab-active'); document.getElementById('edit-canvas').classList.remove('hidden'); document.getElementById('map-edit-ui').classList.remove('hidden'); document.getElementById('top-nav').classList.remove('hidden'); drawEditMode(); }
+        else if (mode === 'online') { document.querySelectorAll('.tab-btn')[2].classList.add('tab-active'); document.getElementById('online-ui').classList.remove('hidden'); document.getElementById('top-nav').classList.remove('hidden'); refreshOnlineMaps(); }
+        else if (mode === 'play') { document.getElementById('top-nav').classList.add('hidden'); }
+    }
+
+    const buildCanvas = document.getElementById('build-canvas'); const ctx = buildCanvas.getContext('2d');
+
+    // --- 프레임 길이/두께 슬라이더: 드래그 중 연속 발생하는 input 이벤트마다 골드가 깎이던 문제 수정 ---
+    // input 이벤트에서는 미리보기만 갱신하고, 드래그를 놓는 change 이벤트에서 1회만 골드를 차감합니다.
+    let confirmedFrameWidth = frameWidth, confirmedFrameHeight = frameHeight;
+    const lengthSlider = document.getElementById('frame-length-slider');
+    const heightSlider = document.getElementById('frame-height-slider');
+    lengthSlider.addEventListener('input', (e) => { frameWidth = parseInt(e.target.value); updateFrameCache(); });
+    lengthSlider.addEventListener('change', (e) => {
+        if (playerGold >= 5) { playerGold -= 5; confirmedFrameWidth = frameWidth; updateStatusUI(); }
+        else { frameWidth = confirmedFrameWidth; e.target.value = frameWidth; updateFrameCache(); showToast("골드 부족!", "error"); }
+    });
+    heightSlider.addEventListener('input', (e) => { frameHeight = parseInt(e.target.value); updateFrameCache(); });
+    heightSlider.addEventListener('change', (e) => {
+        if (playerGold >= 5) { playerGold -= 5; confirmedFrameHeight = frameHeight; updateStatusUI(); }
+        else { frameHeight = confirmedFrameHeight; e.target.value = frameHeight; updateFrameCache(); showToast("골드 부족!", "error"); }
+    });
+    document.getElementById('paint-color').addEventListener('input', (e) => { paintColor = e.target.value; updateFrameCache(); });
+
+    function selectTool(tool) { currentTool = tool; document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('tool-active')); document.getElementById(`tool-${tool}`).classList.add('tool-active'); }
+
+    let isPanning = false; let lastPanX = 0, lastPanY = 0; let hoverPos = null;
+    buildCanvas.addEventListener('contextmenu', e => e.preventDefault());
+    function getMousePos(e, c) { const r = c.getBoundingClientRect(); return { mouseX: e.clientX - r.left - offsetX, mouseY: e.clientY - r.top - offsetY }; }
+
+    buildCanvas.addEventListener('mousemove', (e) => {
+        if (currentMode !== 'build') return;
+        if (isPanning) { offsetX += e.clientX - lastPanX; offsetY += e.clientY - lastPanY; lastPanX = e.clientX; lastPanY = e.clientY; drawBuildMode(); return; }
+        hoverPos = getMousePos(e, buildCanvas); drawBuildMode();
+    });
+    buildCanvas.addEventListener('mousedown', (e) => {
+        if (currentMode !== 'build') return;
+        if (e.button === 2 || currentTool === 'pan') { isPanning = true; lastPanX = e.clientX; lastPanY = e.clientY; return; }
+        if (e.button === 0) { applyTool(hoverPos.mouseX, hoverPos.mouseY); drawBuildMode(); }
+    });
+    buildCanvas.addEventListener('mouseup', () => isPanning = false); buildCanvas.addEventListener('mouseleave', () => { hoverPos = null; isPanning = false; drawBuildMode(); });
+
+    function applyTool(x, y) {
+        if (currentTool === 'eraser') {
+            for (let i = vehicleParts.length - 1; i >= 0; i--) {
+                const part = vehicleParts[i]; const dx = x - part.x, dy = y - part.y;
+                let hit = part.type.startsWith('wheel') ? (dx*dx+dy*dy <= WHEEL_RADIUS*WHEEL_RADIUS) : (Math.abs(dx)<=BODY_BLOCK_SIZE/2 && Math.abs(dy)<=BODY_BLOCK_SIZE/2);
+                if (hit) { playerGold += PRICES[part.type]; vehicleParts.splice(i, 1); updateStatusUI(); return; }
+            }
+        } else {
+            const cost = PRICES[currentTool];
+            if (playerGold >= cost) { playerGold -= cost; vehicleParts.push({ x, y, type: currentTool, color: paintColor }); updateStatusUI(); }
+            else { showToast("골드가 부족합니다!", "error"); }
+        }
+    }
+
+    function drawBuildMode() {
+        if (currentMode !== 'build') return;
+        ctx.fillStyle = '#1e272e'; ctx.fillRect(0, 0, buildCanvas.width, buildCanvas.height);
+        ctx.save(); ctx.translate(offsetX, offsetY);
+        if (currentFrameImg && currentFrameImg.complete) ctx.drawImage(currentFrameImg, -frameWidth/2, -frameHeight/2, frameWidth, frameHeight);
+        vehicleParts.forEach(p => drawPart(ctx, p.x, p.y, p.type, 1));
+        if (hoverPos) {
+            if (currentTool === 'eraser') { ctx.fillStyle='rgba(255,0,0,0.3)'; ctx.beginPath(); ctx.arc(hoverPos.mouseX, hoverPos.mouseY, WHEEL_RADIUS, 0, Math.PI*2); ctx.fill(); }
+            else if (currentTool !== 'pan') drawPart(ctx, hoverPos.mouseX, hoverPos.mouseY, currentTool, 0.5);
+        }
+        ctx.restore();
+    }
+    function drawPart(context, x, y, type, alpha) {
+        context.globalAlpha = alpha; const img = ASSET_IMAGES[type];
+        if (img && img.complete) {
+            let w = type.startsWith('wheel') ? WHEEL_RADIUS*2 : (type === 'cannon' ? 60 : BODY_BLOCK_SIZE);
+            let h = type.startsWith('wheel') ? WHEEL_RADIUS*2 : (type === 'cannon' ? 20 : BODY_BLOCK_SIZE);
+            context.drawImage(img, x - w/2, y - h/2, w, h);
+        }
+        context.globalAlpha = 1.0;
+    }
+
+    // ==================== 맵 에디터 ====================
+    const editCanvas = document.getElementById('edit-canvas'); const editCtx = editCanvas.getContext('2d');
+    let currentEditTool = 'platform';
+    let mapEditParts = []; // { type: 'platform'|'lava', x1,y1,x2,y2 } or { type: 'treasure'|'checkpoint', x, y }
+    let editOffsetX = 100, editOffsetY = 0; // 맵 좌표계: x=0..8000 정도, y=0(하늘)~600(지면)
+    let editScale = 1; const EDIT_MIN_SCALE = 0.08, EDIT_MAX_SCALE = 2.5; // 긴 맵을 축소해서 편집할 수 있도록 확대/축소 지원
+    let isEditPanning = false; let lastEditPanX = 0, lastEditPanY = 0;
+    let editDragStart = null; let editHoverPos = null;
+
+    function selectEditTool(tool) {
+        currentEditTool = tool;
+        document.querySelectorAll('.edit-btn').forEach(b => b.classList.remove('tool-active'));
+        document.getElementById(`edit-tool-${tool}`).classList.add('tool-active');
+    }
+
+    function getEditMousePos(e) {
+        const r = editCanvas.getBoundingClientRect();
+        return { mx: (e.clientX - r.left - editOffsetX) / editScale, my: (e.clientY - r.top - editOffsetY) / editScale };
+    }
+
+    editCanvas.addEventListener('contextmenu', e => e.preventDefault());
+    editCanvas.addEventListener('mousedown', (e) => {
+        if (currentMode !== 'edit') return;
+        if (e.button === 2) { isEditPanning = true; lastEditPanX = e.clientX; lastEditPanY = e.clientY; return; }
+        const { mx, my } = getEditMousePos(e);
+        if (currentEditTool === 'platform' || currentEditTool === 'lava') {
+            editDragStart = { x: mx, y: my };
+        } else if (currentEditTool === 'treasure' || currentEditTool === 'checkpoint') {
+            mapEditParts.push({ type: currentEditTool, x: mx, y: my });
+            drawEditMode();
+        } else if (currentEditTool === 'eraser') {
+            eraseEditPartAt(mx, my);
+        }
+    });
+    editCanvas.addEventListener('mousemove', (e) => {
+        if (currentMode !== 'edit') return;
+        if (isEditPanning) { editOffsetX += e.clientX - lastEditPanX; editOffsetY += e.clientY - lastEditPanY; lastEditPanX = e.clientX; lastEditPanY = e.clientY; drawEditMode(); return; }
+        editHoverPos = getEditMousePos(e); drawEditMode();
+    });
+    editCanvas.addEventListener('mouseup', (e) => {
+        isEditPanning = false;
+        if (currentMode !== 'edit') return;
+        if (editDragStart && (currentEditTool === 'platform' || currentEditTool === 'lava')) {
+            const { mx, my } = getEditMousePos(e);
+            const x1 = Math.min(editDragStart.x, mx), x2 = Math.max(editDragStart.x, mx);
+            const y1 = Math.min(editDragStart.y, my), y2 = Math.max(editDragStart.y, my);
+            if (Math.abs(x2 - x1) > 10 && Math.abs(y2 - y1) > 10) { mapEditParts.push({ type: currentEditTool, x1, y1, x2, y2 }); }
+            editDragStart = null; drawEditMode();
+        }
+    });
+    editCanvas.addEventListener('mouseleave', () => { isEditPanning = false; editDragStart = null; editHoverPos = null; });
+
+    // 마우스 휠로 커서 위치를 기준으로 확대/축소 — 긴 맵을 축소해서 전체를 보며 배치할 수 있습니다.
+    editCanvas.addEventListener('wheel', (e) => {
+        if (currentMode !== 'edit') return;
+        e.preventDefault();
+        const r = editCanvas.getBoundingClientRect();
+        const cx = e.clientX - r.left, cy = e.clientY - r.top;
+        const worldXBefore = (cx - editOffsetX) / editScale, worldYBefore = (cy - editOffsetY) / editScale;
+        const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+        editScale = Math.min(EDIT_MAX_SCALE, Math.max(EDIT_MIN_SCALE, editScale * zoomFactor));
+        editOffsetX = cx - worldXBefore * editScale;
+        editOffsetY = cy - worldYBefore * editScale;
+        drawEditMode();
+    }, { passive: false });
+
+    function editZoom(factor) {
+        const cx = editCanvas.width / 2, cy = editCanvas.height / 2;
+        const worldXBefore = (cx - editOffsetX) / editScale, worldYBefore = (cy - editOffsetY) / editScale;
+        editScale = Math.min(EDIT_MAX_SCALE, Math.max(EDIT_MIN_SCALE, editScale * factor));
+        editOffsetX = cx - worldXBefore * editScale;
+        editOffsetY = cy - worldYBefore * editScale;
+        drawEditMode();
+    }
+
+    function editFitToMap() {
+        let minX = 0, maxX = 2000, minY = 200, maxY = 750;
+        if (mapEditParts.length) {
+            const xs = [], ys = [];
+            mapEditParts.forEach(p => {
+                if (p.type === 'platform' || p.type === 'lava') { xs.push(p.x1, p.x2); ys.push(p.y1, p.y2); }
+                else { xs.push(p.x); ys.push(p.y - 60, p.y); }
+            });
+            minX = Math.min(0, ...xs); maxX = Math.max(500, ...xs);
+            minY = Math.min(100, ...ys); maxY = Math.max(750, ...ys);
+        }
+        const marginX = 150, marginY = 80;
+        const spanX = (maxX - minX) + marginX * 2;
+        const spanY = (maxY - minY) + marginY * 2;
+        editScale = Math.min(EDIT_MAX_SCALE, Math.max(EDIT_MIN_SCALE, Math.min(editCanvas.width / spanX, editCanvas.height / spanY)));
+        editOffsetX = -(minX - marginX) * editScale;
+        editOffsetY = -(minY - marginY) * editScale;
+        drawEditMode();
+    }
+
+    function eraseEditPartAt(mx, my) {
+        for (let i = mapEditParts.length - 1; i >= 0; i--) {
+            const p = mapEditParts[i]; let hit = false;
+            if (p.type === 'platform' || p.type === 'lava') { hit = mx >= p.x1 && mx <= p.x2 && my >= p.y1 && my <= p.y2; }
+            else { const dx = mx - p.x, dy = my - p.y; hit = (dx*dx + dy*dy) <= 30*30; }
+            if (hit) { mapEditParts.splice(i, 1); drawEditMode(); return; }
+        }
+    }
+
+    // 실제 인게임 지형/용암과 비슷하게 보이도록 그라디언트+텍스처로 그리는 2D 미리보기 (이미지 로딩 없이 즉시 반영)
+    function drawGroundPreview(pctx, x1, y1, x2, y2) {
+        const w = x2 - x1, h = y2 - y1; const grassH = Math.min(22, h * 0.35);
+        pctx.fillStyle = '#8b5a2b'; pctx.fillRect(x1, y1, w, h);
+        pctx.fillStyle = 'rgba(0,0,0,0.18)';
+        const step = 34;
+        for (let dx = 6; dx < w; dx += step) {
+            for (let dy = grassH + 10; dy < h; dy += step) {
+                const seed = Math.sin((x1 + dx) * 12.9898 + (y1 + dy) * 78.233) * 43758.5453;
+                const jitter = seed - Math.floor(seed);
+                pctx.beginPath(); pctx.arc(x1 + dx + jitter * 10, y1 + dy, 3 + jitter * 3, 0, Math.PI * 2); pctx.fill();
+            }
+        }
+        pctx.fillStyle = '#7ec850'; pctx.fillRect(x1, y1, w, grassH);
+        pctx.fillStyle = '#4f3116'; pctx.fillRect(x1, y1 + Math.max(0, grassH - 3), w, 4);
+        pctx.strokeStyle = '#3d2711'; pctx.lineWidth = 2; pctx.strokeRect(x1, y1, w, h);
+    }
+    function drawLavaPreview(pctx, x1, y1, x2, y2) {
+        const w = x2 - x1, h = y2 - y1;
+        const grad = pctx.createLinearGradient(x1, y1, x1, y2);
+        grad.addColorStop(0, '#ffce54'); grad.addColorStop(0.2, '#f39c12'); grad.addColorStop(1, '#c0392b');
+        pctx.fillStyle = grad; pctx.fillRect(x1, y1, w, h);
+        pctx.strokeStyle = 'rgba(90,29,16,0.55)'; pctx.lineWidth = 2;
+        for (let dx = 10; dx < w; dx += 40) {
+            const seed = Math.sin((x1 + dx) * 45.1) * 10000; const jitter = seed - Math.floor(seed);
+            pctx.beginPath(); pctx.moveTo(x1 + dx, y1 + jitter * h * 0.3);
+            pctx.lineTo(x1 + dx + 18, y1 + h * 0.5 + jitter * h * 0.3);
+            pctx.lineTo(x1 + dx + 6, y2); pctx.stroke();
+        }
+        pctx.strokeStyle = '#7a2810'; pctx.lineWidth = 2; pctx.strokeRect(x1, y1, w, h);
+    }
+
+    function drawEditMode() {
+        if (currentMode !== 'edit') return;
+        editCtx.fillStyle = '#a4e4fc'; editCtx.fillRect(0, 0, editCanvas.width, editCanvas.height);
+        editCtx.save(); editCtx.translate(editOffsetX, editOffsetY); editCtx.scale(editScale, editScale);
+
+        mapEditParts.forEach(p => {
+            if (p.type === 'platform') { drawGroundPreview(editCtx, p.x1, p.y1, p.x2, p.y2); }
+            else if (p.type === 'lava') { drawLavaPreview(editCtx, p.x1, p.y1, p.x2, p.y2); }
+            else if (p.type === 'treasure') { editCtx.font = '28px Arial'; editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle'; editCtx.fillText('💎', p.x, p.y); }
+            else if (p.type === 'checkpoint') { editCtx.font = '32px Arial'; editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle'; editCtx.fillText('🏁', p.x, p.y); }
+        });
+
+        if (editDragStart && editHoverPos && (currentEditTool === 'platform' || currentEditTool === 'lava')) {
+            editCtx.globalAlpha = 0.5;
+            editCtx.fillStyle = currentEditTool === 'platform' ? '#86cf67' : '#e74c3c';
+            const x1 = Math.min(editDragStart.x, editHoverPos.mx), x2 = Math.max(editDragStart.x, editHoverPos.mx);
+            const y1 = Math.min(editDragStart.y, editHoverPos.my), y2 = Math.max(editDragStart.y, editHoverPos.my);
+            editCtx.fillRect(x1, y1, x2 - x1, y2 - y1);
+            editCtx.globalAlpha = 1;
+        } else if (editHoverPos && (currentEditTool === 'treasure' || currentEditTool === 'checkpoint')) {
+            editCtx.globalAlpha = 0.5; editCtx.font = '28px Arial'; editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle';
+            editCtx.fillText(currentEditTool === 'treasure' ? '💎' : '🏁', editHoverPos.mx, editHoverPos.my);
+            editCtx.globalAlpha = 1;
+        }
+        editCtx.restore();
+        updateMinimap();
+    }
+
+    // ---- 미니맵: 좌우로 긴 맵 전체를 한눈에 보고 클릭/드래그로 순간 이동 ----
+    const minimapCanvas = document.getElementById('edit-minimap');
+    const minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
+    let isMinimapDragging = false;
+
+    function getMapXBounds() {
+        let minX = 0, maxX = 3000;
+        if (mapEditParts.length) {
+            const xs = [];
+            mapEditParts.forEach(p => { if (p.type === 'platform' || p.type === 'lava') { xs.push(p.x1, p.x2); } else { xs.push(p.x); } });
+            minX = Math.min(0, ...xs); maxX = Math.max(3000, ...xs);
+        }
+        return { minX, maxX };
+    }
+
+    function updateMinimap() {
+        if (!minimapCanvas || currentMode !== 'edit') return;
+        const { minX, maxX } = getMapXBounds();
+        const pad = (maxX - minX) * 0.05 + 80;
+        const worldMin = minX - pad, worldMax = maxX + pad, worldSpan = Math.max(1, worldMax - worldMin);
+        const mw = minimapCanvas.width, mh = minimapCanvas.height;
+        minimapCtx.clearRect(0, 0, mw, mh);
+        minimapCtx.fillStyle = '#bfe8fb'; minimapCtx.fillRect(0, 0, mw, mh);
+        const toMiniX = (wx) => ((wx - worldMin) / worldSpan) * mw;
+        mapEditParts.forEach(p => {
+            if (p.type === 'platform') { minimapCtx.fillStyle = '#68a84c'; const x1 = toMiniX(p.x1), x2 = toMiniX(p.x2); minimapCtx.fillRect(x1, mh * 0.5, Math.max(2, x2 - x1), mh * 0.45); }
+            else if (p.type === 'lava') { minimapCtx.fillStyle = '#e74c3c'; const x1 = toMiniX(p.x1), x2 = toMiniX(p.x2); minimapCtx.fillRect(x1, mh * 0.5, Math.max(2, x2 - x1), mh * 0.45); }
+            else if (p.type === 'treasure') { minimapCtx.fillStyle = '#3498db'; const x = toMiniX(p.x); minimapCtx.beginPath(); minimapCtx.arc(x, mh * 0.3, 3, 0, Math.PI * 2); minimapCtx.fill(); }
+            else if (p.type === 'checkpoint') { minimapCtx.fillStyle = '#f1c40f'; const x = toMiniX(p.x); minimapCtx.fillRect(x - 2, mh * 0.1, 4, mh * 0.4); }
+        });
+        const viewWorldX1 = -editOffsetX / editScale, viewWorldX2 = (editCanvas.width - editOffsetX) / editScale;
+        const vx1 = toMiniX(viewWorldX1), vx2 = toMiniX(viewWorldX2);
+        minimapCtx.fillStyle = 'rgba(255,255,255,0.2)'; minimapCtx.fillRect(vx1, 2, Math.max(2, vx2 - vx1), mh - 4);
+        minimapCtx.strokeStyle = '#ffffff'; minimapCtx.lineWidth = 2; minimapCtx.strokeRect(vx1, 2, Math.max(2, vx2 - vx1), mh - 4);
+        minimapCanvas._worldMin = worldMin; minimapCanvas._worldSpan = worldSpan;
+        const lenEl = document.getElementById('edit-map-length');
+        if (lenEl) lenEl.textContent = `길이: 약 ${Math.max(0, Math.round(maxX - Math.min(0, minX)))}px`;
+    }
+
+    function jumpToMinimap(e) {
+        if (!minimapCanvas || !minimapCanvas._worldSpan) return;
+        const r = minimapCanvas.getBoundingClientRect();
+        const frac = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+        const worldX = minimapCanvas._worldMin + frac * minimapCanvas._worldSpan;
+        editOffsetX = editCanvas.width / 2 - worldX * editScale;
+        drawEditMode();
+    }
+    if (minimapCanvas) {
+        minimapCanvas.addEventListener('mousedown', (e) => { isMinimapDragging = true; jumpToMinimap(e); });
+        window.addEventListener('mousemove', (e) => { if (isMinimapDragging) jumpToMinimap(e); });
+        window.addEventListener('mouseup', () => isMinimapDragging = false);
+    }
+
+    function clearEditMap() { mapEditParts = []; drawEditMode(); showToast("맵을 초기화했습니다."); }
+
+    function testMyMap() {
+        const hasGround = mapEditParts.some(p => p.type === 'platform');
+        const hasCheckpoint = mapEditParts.some(p => p.type === 'checkpoint');
+        if (!hasGround) { showToast("최소 1개의 지형을 배치하세요!", "error"); return; }
+        if (!hasCheckpoint) { showToast("결승선(🏁)을 배치하세요!", "error"); return; }
+        customMapData = JSON.parse(JSON.stringify(mapEditParts));
+        startPlay(true);
+    }
+
+    // ==================== 온라인 의뢰 ====================
+    // Firestore(맵 저장/공유)를 사용합니다. 연결이 안 되거나 아직 공유된 맵이 없으면 샘플 맵으로 대체합니다.
+    const SAMPLE_ONLINE_MAPS = [
+        { name: '초보자의 언덕', author: 'PixelKim', reward: 100, data: [
+            { type: 'platform', x1: 0, y1: 400, x2: 2000, y2: 700 },
+            { type: 'treasure', x: 900, y: 350 },
+            { type: 'checkpoint', x: 1800, y: 400 }
+        ]},
+        { name: '용암 협곡 질주', author: 'DragonMoon', reward: 150, data: [
+            { type: 'platform', x1: 0, y1: 400, x2: 900, y2: 700 },
+            { type: 'lava', x1: 900, y1: 500, x2: 1200, y2: 700 },
+            { type: 'platform', x1: 1200, y1: 400, x2: 2600, y2: 700 },
+            { type: 'lava', x1: 2600, y1: 500, x2: 2850, y2: 700 },
+            { type: 'platform', x1: 2850, y1: 400, x2: 4200, y2: 700 },
+            { type: 'checkpoint', x: 4000, y: 400 }
+        ]},
+        { name: '보물 수집가', author: '별이빛나는밤', reward: 200, data: [
+            { type: 'platform', x1: 0, y1: 450, x2: 3500, y2: 750 },
+            { type: 'treasure', x: 700, y: 400 }, { type: 'treasure', x: 1400, y: 400 },
+            { type: 'treasure', x: 2100, y: 400 }, { type: 'treasure', x: 2800, y: 400 },
+            { type: 'checkpoint', x: 3300, y: 450 }
+        ]},
+        { name: '극한 장애물 코스', author: 'MechEngineer', reward: 250, data: [
+            { type: 'platform', x1: 0, y1: 400, x2: 1000, y2: 700 },
+            { type: 'lava', x1: 1000, y1: 550, x2: 1150, y2: 700 },
+            { type: 'platform', x1: 1150, y1: 350, x2: 1400, y2: 700 },
+            { type: 'lava', x1: 1400, y1: 550, x2: 1550, y2: 700 },
+            { type: 'platform', x1: 1550, y1: 300, x2: 1800, y2: 700 },
+            { type: 'platform', x1: 1900, y1: 400, x2: 3200, y2: 700 },
+            { type: 'checkpoint', x: 3000, y: 400 }
+        ]}
+    ];
+
+    function renderMapCard(list, { name, author, data, plays, isSample, docRef }) {
+        const card = document.createElement('div');
+        card.className = 'bg-gray-700 p-4 rounded-xl border border-gray-600 flex flex-col gap-2';
+        card.innerHTML = `<h3 class="font-bold text-lg text-blue-300">${name}${isSample ? ' <span class="text-xs text-gray-500">(샘플)</span>' : ''}</h3>
+            <p class="text-xs text-gray-400">제작자: ${author}</p>
+            <p class="text-yellow-400 font-bold text-sm">보상: 💰 100 G ${plays != null ? `· 도전 ${plays}회` : ''}</p>`;
+        const btn = document.createElement('button');
+        btn.className = 'mt-2 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold transition';
+        btn.textContent = '🕹️ 도전하기';
+        btn.onclick = () => {
+            customMapData = JSON.parse(JSON.stringify(data));
+            if (docRef) { docRef.update({ plays: firebase.firestore.FieldValue.increment(1) }).catch(() => {}); }
+            startPlay(true);
+        };
+        card.appendChild(btn);
+        list.appendChild(card);
+    }
+
+    function renderSampleMaps(statusText) {
+        const list = document.getElementById('online-map-list');
+        list.innerHTML = '';
+        SAMPLE_ONLINE_MAPS.forEach(map => renderMapCard(list, { ...map, isSample: true }));
+        document.getElementById('online-status').textContent = statusText || '';
+    }
+
+    async function refreshOnlineMaps() {
+        const list = document.getElementById('online-map-list');
+        const statusEl = document.getElementById('online-status');
+        statusEl.textContent = '커뮤니티 맵을 불러오는 중...';
+        if (!db) { renderSampleMaps('⚠️ 온라인 연결이 설정되지 않아 샘플 맵을 보여드려요.'); return; }
+        try {
+            const snapshot = await db.collection('maps').orderBy('createdAt', 'desc').limit(30).get();
+            if (snapshot.empty) { renderSampleMaps('아직 공유된 맵이 없어요! 맵 에디터에서 첫 맵을 공유해보세요. (지금은 샘플 맵)'); return; }
+            list.innerHTML = '';
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                renderMapCard(list, { name: d.name || '이름없는 맵', author: d.author || '익명', data: d.data, plays: d.plays || 0, docRef: doc.ref });
+            });
+            statusEl.textContent = `커뮤니티 맵 ${snapshot.size}개를 불러왔어요.`;
+        } catch (e) {
+            console.error('온라인 맵 불러오기 실패:', e);
+            renderSampleMaps('⚠️ 커뮤니티 서버에 연결하지 못했어요 (Firestore 규칙을 확인하세요). 샘플 맵을 보여드려요.');
+        }
+    }
+
+    async function shareMapOnline() {
+        const hasGround = mapEditParts.some(p => p.type === 'platform');
+        const hasCheckpoint = mapEditParts.some(p => p.type === 'checkpoint');
+        if (!hasGround) { showToast("최소 1개의 지형을 배치하세요!", "error"); return; }
+        if (!hasCheckpoint) { showToast("결승선(🏁)을 배치하세요!", "error"); return; }
+        const name = document.getElementById('share-map-name').value.trim() || '이름없는 맵';
+        const author = document.getElementById('share-author-name').value.trim() || '익명';
+        const statusEl = document.getElementById('share-status');
+        if (!db) { statusEl.textContent = '⚠️ 온라인 연결이 설정되지 않았어요.'; showToast("온라인 연결이 설정되지 않았어요.", "error"); return; }
+        const btn = document.getElementById('share-map-btn');
+        btn.disabled = true; statusEl.textContent = '업로드 중...';
+        try {
+            await db.collection('maps').add({
+                name, author,
+                data: JSON.parse(JSON.stringify(mapEditParts)),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                plays: 0
+            });
+            statusEl.textContent = '✅ 공유 완료! 온라인 의뢰 탭에서 확인해보세요.';
+            showToast("맵을 온라인에 공유했습니다!");
+        } catch (e) {
+            console.error('맵 공유 실패:', e);
+            statusEl.textContent = '❌ 공유 실패 (Firestore 규칙을 확인하세요).';
+            showToast("공유에 실패했습니다.", "error");
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    const { Engine, Render, Runner, World, Bodies, Body, Constraint, Events, Vector } = Matter;
+    let engine, render, runner;
+    let carChassis = null; let carWheels = []; let keys = {};
+    let jumpCooldown = false; let remainingJumps = 0; let hasBoosters = 0; let hasSprings = 0; let hasCannons = 0; let canShoot = true;
+    let isClearing = false; let monsters = []; let enemyFireTimer = 0;
+    let laserTimer = 0; let laserY = 0; let laserWarning = null; let laserActive = null;
+
+    window.addEventListener('keydown', (e) => keys[e.code] = true);
+    window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+    function stopPhysicsEngine() {
+        if (render) { Render.stop(render); if (render.canvas) render.canvas.remove(); render = null; }
+        if (runner) { Runner.stop(runner); runner = null; }
+        if (engine) { Engine.clear(engine); engine = null; }
+        carChassis = null; carWheels = []; monsters = []; keys = {};
+    }
+
+    function startPlay(isCustom = false) {
+        if (vehicleParts.filter(p => p.type.startsWith('wheel')).length < 1) { showToast("바퀴를 달아주세요!", "error"); return; }
+        switchMode('play'); document.getElementById('matter-container').classList.remove('hidden'); document.getElementById('play-ui').classList.remove('hidden');
+        startStage(isCustom);
+    }
+
+    function startStage(isCustom = false) {
+        isClearing = false;
+        document.getElementById('stage-text').textContent = isCustom ? `🗺️ 커스텀 맵 테스트` : `🏁 스테이지 ${currentStage}`;
+        if (render) { Render.stop(render); render.canvas.remove(); }
+        if (runner) Runner.stop(runner);
+        if (engine) Engine.clear(engine);
+
+        carWheels = []; carChassis = null; keys = {}; jumpCooldown = false; remainingJumps = 0; canShoot = true; monsters = []; enemyFireTimer = 0;
+        laserTimer = 0; laserWarning = null; laserActive = null;
+        hideMessage(); initPhysicsEngine(isCustom);
+    }
+
+    function initPhysicsEngine(isCustom) {
+        engine = Engine.create();
+        engine.positionIterations = 30; // 바퀴 분리 방지를 위한 반복 연산 강화
+        engine.velocityIterations = 30;
+
+        const world = engine.world; const container = document.getElementById('matter-container'); container.innerHTML = '';
+        render = Render.create({ element: container, engine: engine, options: { width: window.innerWidth, height: window.innerHeight, wireframes: false, background: '#a4e4fc', hasBounds: true }});
+        Render.run(render); runner = Runner.create(); Runner.run(runner, engine);
+
+        if (isCustom) { createCustomTerrain(world, customMapData); } else { createTerrain(world, currentStage); }
+        createCarFromBuild(world);
+
+        Events.on(engine, 'beforeUpdate', () => {
+            if (!carChassis || isClearing) return;
+
+            const speed = 0.15; const maxAngularVelocity = 1.0;
+            carWheels.forEach(wheel => {
+                if (keys['ArrowRight'] || keys['KeyD']) Body.setAngularVelocity(wheel, Math.min(wheel.angularVelocity + speed, maxAngularVelocity));
+                if (keys['ArrowLeft'] || keys['KeyA']) Body.setAngularVelocity(wheel, Math.max(wheel.angularVelocity - speed, -maxAngularVelocity));
+            });
+
+            let isTouchingGround = false;
+            for(let i=0; i<engine.pairs.list.length; i++) {
+                const pair = engine.pairs.list[i];
+                if (pair.bodyA.isSensor || pair.bodyB.isSensor || pair.bodyA.label.includes('monster') || pair.bodyB.label.includes('monster')) continue;
+                const isCarA = pair.bodyA === carChassis || carWheels.includes(pair.bodyA) || pair.bodyA.label === 'bulldozer' || pair.bodyA.label === 'carPart';
+                const isCarB = pair.bodyB === carChassis || carWheels.includes(pair.bodyB) || pair.bodyB.label === 'bulldozer' || pair.bodyB.label === 'carPart';
+                if (isCarA !== isCarB) { isTouchingGround = true; break; }
+            }
+
+            if (isTouchingGround) { remainingJumps = hasSprings; }
+            else {
+                if (keys['ArrowRight'] || keys['KeyD']) Body.setAngularVelocity(carChassis, 0.04);
+                if (keys['ArrowLeft'] || keys['KeyA']) Body.setAngularVelocity(carChassis, -0.04);
+            }
+
+            if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && !jumpCooldown && remainingJumps > 0) {
+                remainingJumps--; Body.setVelocity(carChassis, { x: carChassis.velocity.x, y: Math.min(carChassis.velocity.y, 0) });
+                Body.applyForce(carChassis, carChassis.position, { x: 0, y: -0.15 * carChassis.mass });
+                jumpCooldown = true; setTimeout(() => { jumpCooldown = false; }, 300);
+            }
+            if ((keys['ShiftLeft'] || keys['ShiftRight']) && hasBoosters > 0) {
+                const boostForce = 0.007 * hasBoosters * carChassis.mass;
+                Body.applyForce(carChassis, carChassis.position, { x: Math.cos(carChassis.angle) * boostForce, y: Math.sin(carChassis.angle) * boostForce });
+            }
+            if (keys['KeyF'] && canShoot && hasCannons > 0) {
+                shootCannon(world); canShoot = false; setTimeout(() => { canShoot = true; }, 800);
+            }
+
+            monsters.forEach(m => {
+                if (m.isAttached) {
+                    if (Math.abs(carChassis.angularVelocity) > 0.08 || keys['KeyA'] || keys['KeyD']) {
+                        m.shakeScore = (m.shakeScore || 0) + 1;
+                        if (m.shakeScore > 20) { World.remove(engine.world, m.constraint); m.isAttached = false; m.shakeScore = 0; m.render.sprite.texture = ASSET_URIS['slime']; Body.applyForce(m, m.position, {x: (Math.random()-0.5)*0.2, y: -0.2}); }
+                    } else { m.shakeScore = Math.max(0, (m.shakeScore || 0) - 1); }
+                } else {
+                    const dx = carChassis.position.x - m.position.x;
+                    if (Math.abs(dx) < 1200) Body.applyForce(m, m.position, {x: Math.sign(dx) * 0.0005 * m.mass, y: 0});
+                }
+            });
+
+            const stMod = currentStage % 10;
+            if (!isCustom && (stMod === 9 || stMod === 0)) {
+                if (stMod === 9) { // 9라운드: 기존 포탄 발사
+                    enemyFireTimer++;
+                    if (enemyFireTimer > 90) {
+                        enemyFireTimer = 0; const tx = 6500;
+                        const fireBall = Bodies.circle(tx, carChassis.position.y - (Math.random()*100), 20, { label: 'enemyCannonball', isSensor: true, render: { fillStyle: '#ff0000' } });
+                        World.add(world, fireBall); Body.setVelocity(fireBall, { x: -25, y: 0 });
+                    }
+                } else if (stMod === 0) { // 10라운드 보스: 레이저 빔 예고 및 발사
+                    laserTimer++;
+                    if (laserTimer === 40) { // 플레이어 위치로 조준 시작
+                        laserY = carChassis.position.y;
+                        laserWarning = Bodies.rectangle(carChassis.position.x, laserY, 12000, 10, { isStatic: true, isSensor: true, label: 'laserWarning', render: { fillStyle: 'rgba(255, 0, 0, 0.4)' } });
+                        World.add(world, laserWarning);
+                    } else if (laserTimer > 40 && laserTimer < 100) { // 깜빡이는 예고선
+                        if (laserTimer % 10 === 0) laserWarning.render.fillStyle = 'rgba(255, 0, 0, 0.1)';
+                        else if (laserTimer % 10 === 5) laserWarning.render.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                        // 레이저 x축은 차를 따라가서 피할 수 없게 길게 유지
+                        Body.setPosition(laserWarning, { x: carChassis.position.x, y: laserY });
+                    } else if (laserTimer === 100) { // 레이저 발사!
+                        World.remove(world, laserWarning);
+                        laserActive = Bodies.rectangle(carChassis.position.x, laserY, 12000, 80, { isStatic: true, isSensor: true, label: 'enemyLaser', render: { fillStyle: '#ff0000', strokeStyle: '#ffffff', lineWidth: 4 } });
+                        World.add(world, laserActive);
+                    } else if (laserTimer > 100 && laserTimer < 130) {
+                        Body.setPosition(laserActive, { x: carChassis.position.x, y: laserY });
+                    } else if (laserTimer === 130) { // 레이저 종료 및 쿨타임
+                        World.remove(world, laserActive);
+                        laserActive = null;
+                        laserTimer = 0;
+                    }
+                }
+            }
+
+            Render.lookAt(render, { min: { x: carChassis.position.x - window.innerWidth/2, y: carChassis.position.y - window.innerHeight/1.3 }, max: { x: carChassis.position.x + window.innerWidth/2, y: carChassis.position.y + window.innerHeight/2.5 } });
+
+            if (carChassis.position.y > 2000) { isClearing = true; showMessage("추락하여 파괴되었습니다!", "bg-red-500", "scale-110"); setTimeout(() => startStage(isCustom), 1500); }
+        });
+
+        Events.on(engine, 'collisionStart', (event) => {
+            if (isClearing) return;
+            event.pairs.forEach(pair => {
+                const bodyA = pair.bodyA, bodyB = pair.bodyB;
+                const isDozerHit = (bodyA.label === 'bulldozer' && bodyB.label === 'breakable') || (bodyB.label === 'bulldozer' && bodyA.label === 'breakable');
+                const isCannonHit = (bodyA.label === 'cannonball' && bodyB.label === 'breakable') || (bodyB.label === 'cannonball' && bodyA.label === 'breakable');
+
+                if (isDozerHit || isCannonHit) {
+                    const breakableBody = bodyA.label === 'breakable' ? bodyA : bodyB; World.remove(engine.world, breakableBody);
+                    if (isDozerHit) { const dozer = bodyA.label === 'bulldozer' ? bodyA : bodyB; dozer.durability -= 1; if (dozer.durability <= 0) World.remove(engine.world, dozer); }
+                }
+
+                const isMonsterHit = (bodyA.label === 'cannonball' && bodyB.label === 'monster') || (bodyB.label === 'cannonball' && bodyA.label === 'monster');
+                if (isMonsterHit) { const monster = bodyA.label === 'monster' ? bodyA : bodyB; World.remove(engine.world, monster); if(monster.constraint) World.remove(engine.world, monster.constraint); const idx = monsters.indexOf(monster); if(idx>-1) monsters.splice(idx, 1); }
+
+                // 충돌 감지에 레이저(enemyLaser) 추가
+                const isEnemyHit = (bodyA.label === 'enemyCannonball' || bodyB.label === 'enemyCannonball' || bodyA.label === 'enemyLaser' || bodyB.label === 'enemyLaser');
+                if (isEnemyHit) {
+                    const other = (bodyA.label === 'enemyCannonball' || bodyA.label === 'enemyLaser') ? bodyB : bodyA;
+                    if (other === carChassis || carWheels.includes(other) || other.label === 'carPart') {
+                        isClearing = true;
+                        showMessage("💥 레이저/포탄에 맞아 파괴되었습니다!", "bg-red-600", "scale-110");
+                        setTimeout(() => startStage(isCustom), 1500);
+                    }
+                }
+
+                // 용암(커스텀 맵) 접촉 시 파괴
+                const isLavaHit = (bodyA.label === 'lava' || bodyB.label === 'lava');
+                if (isLavaHit) {
+                    const other = bodyA.label === 'lava' ? bodyB : bodyA;
+                    if (other === carChassis || carWheels.includes(other) || other.label === 'carPart' || other.label === 'bulldozer') {
+                        isClearing = true;
+                        showMessage("🔥 용암에 빠져 파괴되었습니다!", "bg-red-600", "scale-110");
+                        setTimeout(() => startStage(isCustom), 1500);
+                    }
+                }
+
+                if (bodyA.label === 'monster' || bodyB.label === 'monster') {
+                    const monster = bodyA.label === 'monster' ? bodyA : bodyB; const other = bodyA.label === 'monster' ? bodyB : bodyA;
+                    if ((other === carChassis || carWheels.includes(other) || other.label === 'carPart') && !monster.isAttached) {
+                        monster.isAttached = true; monster.render.sprite.texture = ASSET_URIS['slime-attached'];
+                        const constraint = Constraint.create({ bodyA: other, bodyB: monster, stiffness: 0.8, length: 50, render: { visible: false }});
+                        monster.constraint = constraint; World.add(engine.world, constraint);
+                    }
+                }
+
+                if (bodyA.label === 'gold' || bodyB.label === 'gold') {
+                    const gold = bodyA.label === 'gold' ? bodyA : bodyB;
+                    if (!gold.isCollected) { gold.isCollected = true; World.remove(engine.world, gold); playerGold += 10; updateStatusUI(); showToast("🪙 10 골드 획득!"); }
+                }
+
+                if (bodyA.label === 'treasure' || bodyB.label === 'treasure') {
+                    const treasure = bodyA.label === 'treasure' ? bodyA : bodyB;
+                    if (!treasure.isCollected) { treasure.isCollected = true; World.remove(engine.world, treasure); treasureCount += 1; expCount += 20; updateStatusUI(); showToast("💎 보물 획득!"); }
+                }
+
+                if (bodyA.label === 'checkpoint' || bodyB.label === 'checkpoint') {
+                    if (bodyA === carChassis || bodyB === carChassis || carWheels.includes(bodyA) || carWheels.includes(bodyB) || bodyA.label==='carPart' || bodyB.label==='carPart') {
+                        isClearing = true;
+                        if (!isCustom) { currentStage++; if(currentStage > maxStageReached) maxStageReached = currentStage; updateStatusUI(); showMessage(`✨ 스테이지 클리어! ✨`, "bg-green-500", "scale-110"); setTimeout(() => startStage(false), 2000); }
+                        else { playerGold += 100; updateStatusUI(); showMessage(`의뢰 완료! 💰100G`, "bg-yellow-500", "scale-110"); setTimeout(() => switchMode('online'), 2000); }
+                    }
+                }
+            });
+        });
+    }
+
+    function shootCannon(world) {
+        if (!carChassis) return; const angle = carChassis.angle; const force = 0.05;
+        const pX = carChassis.position.x + Math.cos(angle) * (frameWidth/2 + 40);
+        const pY = carChassis.position.y + Math.sin(angle) * (frameWidth/2 + 40);
+        const cannonball = Bodies.circle(pX, pY, 15, { label: 'cannonball', density: 0.01, frictionAir: 0.001, restitution: 0.8, render: { fillStyle: '#2c3e50' } });
+        World.add(world, cannonball); Body.applyForce(cannonball, cannonball.position, { x: Math.cos(angle) * force, y: Math.sin(angle) * force }); Body.applyForce(carChassis, carChassis.position, { x: -Math.cos(angle) * force * 0.5, y: -Math.sin(angle) * force * 0.5 });
+        setTimeout(() => World.remove(world, cannonball), 3000);
+    }
+
+    function createCarFromBuild(world) {
+        const START_X = 300, START_Y = 100;
+        const carGroup = Body.nextGroup(true); // 동일 그룹은 서로 튕겨내지 않음 (Ghosting)
+        hasBoosters = 0; hasSprings = 0; hasCannons = 0;
+
+        // 1. 차체 뼈대
+        const frameUri = getFrameSVGDataURI(frameWidth, frameHeight, paintColor);
+        carChassis = Bodies.rectangle(START_X, START_Y, frameWidth, frameHeight, {
+            render: { sprite: { texture: frameUri } },
+            density: 0.05, friction: 0.5, restitution: 0.1, collisionFilter: { group: carGroup }
+        });
+        World.add(world, carChassis);
+
+        // 2. 부품 생성 및 차체 중심 기준 오프셋 연결
+        vehicleParts.forEach(part => {
+            const px = START_X + part.x;
+            const py = START_Y + part.y;
+            let partBody = null; let isRigid = true;
+
+            if (part.type === 'body-block') {
+                partBody = Bodies.rectangle(px, py, BODY_BLOCK_SIZE, BODY_BLOCK_SIZE, { label:'carPart', render: { sprite: { texture: ASSET_URIS['body-block'] } }, density: 0.1, collisionFilter: { group: carGroup } });
+            } else if (part.type === 'booster') {
+                hasBoosters++; partBody = Bodies.rectangle(px, py, BODY_BLOCK_SIZE, BODY_BLOCK_SIZE, { label:'carPart', render: { sprite: { texture: ASSET_URIS['booster'] } }, density: 0.01, collisionFilter: { group: carGroup } });
+            } else if (part.type === 'spring') {
+                hasSprings++; partBody = Bodies.rectangle(px, py, BODY_BLOCK_SIZE, BODY_BLOCK_SIZE, { label:'carPart', render: { sprite: { texture: ASSET_URIS['spring'] } }, density: 0.01, collisionFilter: { group: carGroup } });
+            } else if (part.type === 'cannon') {
+                hasCannons++; partBody = Bodies.rectangle(px, py, 60, 20, { label:'carPart', render: { sprite: { texture: ASSET_URIS['cannon'] } }, density: 0.01, collisionFilter: { group: carGroup } });
+            } else if (part.type.startsWith('wheel')) {
+                const wOpts = { collisionFilter: { group: carGroup }, friction: 0.9, restitution: 0.1, density: 0.02, render: { sprite: { texture: ASSET_URIS[part.type] } } };
+                partBody = Bodies.circle(px, py, WHEEL_RADIUS, wOpts);
+                carWheels.push(partBody); isRigid = false;
+            } else if (part.type === 'bulldozer') {
+                partBody = Bodies.rectangle(px, py, 40, 40, { label: 'bulldozer', collisionFilter: { group: carGroup }, render: { sprite: { texture: ASSET_URIS['bulldozer'] } } });
+                partBody.durability = 3;
+            }
+
+            if (partBody) {
+                World.add(world, partBody);
+                if (isRigid) {
+                    // 고정 부품 (용접)
+                    World.add(world, Constraint.create({
+                        bodyA: carChassis, bodyB: partBody,
+                        pointA: { x: part.x, y: part.y },
+                        pointB: { x: 0, y: 0 },
+                        stiffness: 1, length: 0, render: { visible: false }
+                    }));
+                } else {
+                    // 바퀴 (서스펜션 강화)
+                    World.add(world, Constraint.create({
+                        bodyA: carChassis, bodyB: partBody,
+                        pointA: { x: part.x, y: part.y },
+                        pointB: { x: 0, y: 0 },
+                        stiffness: 0.95, damping: 0.5, length: 0, render: { visible: false }
+                    }));
+                }
+            }
+        });
+    }
+
+    function createBackground(world, length) { const len = length || 8000; const count = Math.max(20, Math.round(len / 380)); for(let i=0;i<count;i++) { const cx=Math.random()*len, cy=Math.random()*300-100, r=Math.random()*40+30; const o={isStatic:true,isSensor:true,render:{fillStyle:'rgba(255,255,255,0.8)'}}; World.add(world,[Bodies.circle(cx,cy,r,o),Bodies.circle(cx+r*0.8,cy+10,r*0.8,o),Bodies.circle(cx-r*0.8,cy+10,r*0.8,o)]); } }
+    // 긴 스테이지를 쉽게 조립하기 위한 헬퍼: 지형 구간 / 용암 구덩이 / 낮은 벽 배치
+    function placeGroundSeg(world, x1, x2, topY) { const h = 420; createPlatform(world, (x1+x2)/2, topY + h/2, x2 - x1, h); return x2; }
+    function placeLavaGap(world, x1, x2, topY, depth) { createLava(world, x1, topY, x2, topY + (depth || 320)); return x2; }
+    function placeWall(world, x, topY, wallW, wallH) { createBreakableWall(world, x, topY - (wallH || 110) / 2, wallW || 40, wallH || 110); }
+    function createPlatform(world,x,y,wd,h) { const uri = getGroundSVGDataURI(wd, h); World.add(world, Bodies.rectangle(x, y, wd, h, { isStatic: true, friction: 0.8, restitution: 0.1, render: { sprite: { texture: uri } } })); }
+    function createSlope(world,x,y,wd,h,a) { const uri = getGroundSVGDataURI(wd, h); World.add(world, Bodies.rectangle(x,y,wd,h,{isStatic:true,friction:0.8,angle:a,render:{sprite:{texture:uri}}})); }
+    function createBreakableWall(world,x,y,wd,h) { const uri = getCrateSVGDataURI(wd, h); World.add(world, Bodies.rectangle(x,y,wd,h,{isStatic:true,label:'breakable',density:0.05,render:{sprite:{texture:uri}}})); }
+    function createGoldCoin(world, x, y) { World.add(world, Bodies.circle(x, y, 15, { isStatic: true, isSensor: true, label: 'gold', render: { sprite: { texture: ASSET_URIS['coin'] } } })); }
+    function createTreasureGem(world, x, y) { World.add(world, Bodies.circle(x, y, 16, { isStatic: true, isSensor: true, label: 'treasure', render: { sprite: { texture: ASSET_URIS['gem'] } } })); }
+    function createLava(world, x1, y1, x2, y2) { const cx=(x1+x2)/2, cy=(y1+y2)/2, w=Math.abs(x2-x1), h=Math.abs(y2-y1); const uri = getLavaSVGDataURI(w, h); World.add(world, Bodies.rectangle(cx, cy, w, h, { isStatic: true, isSensor: true, label: 'lava', render: { sprite: { texture: uri } } })); }
+    function spawnMonster(world, x, y) { const m = Bodies.circle(x, y, 25, { label: 'monster', density: 0.05, friction: 0.8, render: { sprite: { texture: ASSET_URIS['slime'] } } }); monsters.push(m); World.add(world, m); }
+    function createCheckpoint(world, x, y) {
+        const flag = Bodies.rectangle(x, y - 60, 80, 120, { isStatic: true, isSensor: true, render: { sprite: { texture: ASSET_URIS['flag'] } } });
+        const trigger = Bodies.rectangle(x, y - 400, 20, 1000, { isStatic: true, isSensor: true, label: 'checkpoint', render: { visible: false } });
+        World.add(world, [flag, trigger]);
+    }
+
+    // 맵 에디터에서 만든 커스텀 맵을 물리 월드에 배치
+    function createCustomTerrain(world, data) {
+        const xs = data.map(p => (p.type === 'platform' || p.type === 'lava') ? p.x2 : p.x);
+        const customLen = xs.length ? Math.max(3000, ...xs) : 3000;
+        createBackground(world, customLen);
+        data.forEach(p => {
+            if (p.type === 'platform') { const cx=(p.x1+p.x2)/2, cy=(p.y1+p.y2)/2, w=Math.abs(p.x2-p.x1), h=Math.abs(p.y2-p.y1); const uri = getGroundSVGDataURI(w, h); World.add(world, Bodies.rectangle(cx, cy, w, h, { isStatic: true, friction: 0.8, restitution: 0.1, render: { sprite: { texture: uri } } })); }
+            else if (p.type === 'lava') { createLava(world, p.x1, p.y1, p.x2, p.y2); }
+            else if (p.type === 'treasure') { createTreasureGem(world, p.x, p.y); }
+            else if (p.type === 'checkpoint') { createCheckpoint(world, p.x, p.y); }
+        });
+    }
+
+    function createTerrain(world, stage) {
+        createBackground(world, 12000);
+        const layout = (stage - 1) % 10 + 1;
+
+        if (layout === 1) { // 초원 첫걸음
+            placeGroundSeg(world, 0, 2200, 400);
+            placeWall(world, 900, 400, 40, 110);
+            createGoldCoin(world, 500, 320); createGoldCoin(world, 1300, 320);
+            // 2200-2380: 점프로 건너는 빈 틈
+            placeGroundSeg(world, 2380, 3600, 400);
+            createTreasureGem(world, 3000, 220);
+            createGoldCoin(world, 2600, 320);
+            placeLavaGap(world, 3600, 3850, 400);
+            placeGroundSeg(world, 3850, 5400, 400);
+            placeWall(world, 4600, 400, 40, 110);
+            createGoldCoin(world, 4200, 320); createGoldCoin(world, 4950, 320);
+            createCheckpoint(world, 5250, 400);
+        } else if (layout === 2) { // 구불구불 언덕
+            placeGroundSeg(world, 0, 1800, 400);
+            createSlope(world, 2000, 480, 500, 60, -Math.PI/7);
+            placeGroundSeg(world, 2250, 3700, 250);
+            createGoldCoin(world, 2550, 100); createGoldCoin(world, 2950, 60); createGoldCoin(world, 3350, 100);
+            createTreasureGem(world, 3600, 80);
+            createSlope(world, 3950, 380, 500, 60, Math.PI/7);
+            placeGroundSeg(world, 4250, 5700, 400);
+            createGoldCoin(world, 4600, 320);
+            placeWall(world, 5300, 400, 40, 120);
+            placeLavaGap(world, 5700, 5950, 400);
+            placeGroundSeg(world, 5950, 7300, 400);
+            createGoldCoin(world, 6300, 320); createGoldCoin(world, 6800, 320);
+            createCheckpoint(world, 7150, 400);
+        } else if (layout === 3) { // 징검다리
+            placeGroundSeg(world, 0, 800, 400);
+            placeGroundSeg(world, 1150, 1300, 350);
+            placeGroundSeg(world, 1650, 1800, 300); createGoldCoin(world, 1725, 220);
+            placeGroundSeg(world, 2150, 2300, 250);
+            placeGroundSeg(world, 2650, 2800, 200); createGoldCoin(world, 2725, 120);
+            placeGroundSeg(world, 3150, 4150, 300);
+            createTreasureGem(world, 3650, 150);
+            placeGroundSeg(world, 4450, 4600, 350);
+            placeGroundSeg(world, 4950, 5100, 300); createGoldCoin(world, 5025, 220);
+            placeGroundSeg(world, 5450, 5600, 380);
+            placeGroundSeg(world, 5900, 7200, 400);
+            createCheckpoint(world, 7050, 400);
+        } else if (layout === 4) { // 부서지는 요새
+            placeGroundSeg(world, 0, 5200, 400);
+            placeWall(world, 1200, 400, 50, 150); createGoldCoin(world, 700, 320);
+            placeWall(world, 2200, 400, 50, 220); createGoldCoin(world, 1700, 320);
+            placeWall(world, 3400, 400, 100, 320); createGoldCoin(world, 2700, 320);
+            placeWall(world, 4600, 400, 100, 420); createGoldCoin(world, 3900, 320);
+            placeLavaGap(world, 5200, 5450, 400);
+            placeGroundSeg(world, 5450, 6300, 400);
+            placeWall(world, 5800, 400, 60, 300);
+            createTreasureGem(world, 6000, 200);
+            placeLavaGap(world, 6300, 6500, 400);
+            placeGroundSeg(world, 6500, 8200, 400);
+            createGoldCoin(world, 6800, 320); createGoldCoin(world, 7500, 320);
+            createCheckpoint(world, 8050, 400);
+        } else if (layout === 5) { // 황금 수집가
+            placeGroundSeg(world, 0, 7300, 400);
+            placeWall(world, 3500, 400, 80, 130);
+            for (let i = 0; i < 10; i++) createGoldCoin(world, 600 + i * 650, i % 2 === 0 ? 320 : 180);
+            createTreasureGem(world, 2000, 250); createTreasureGem(world, 4200, 250); createTreasureGem(world, 6200, 250);
+            createCheckpoint(world, 7150, 400);
+        } else if (layout === 6) { // 통곡의 벽
+            placeGroundSeg(world, 0, 7200, 400);
+            placeWall(world, 1500, 400, 90, 550); createGoldCoin(world, 800, 320);
+            placeWall(world, 3000, 400, 90, 650); createGoldCoin(world, 2200, 320); createTreasureGem(world, 2000, 100);
+            placeWall(world, 4500, 400, 100, 750); createGoldCoin(world, 3700, 320);
+            placeWall(world, 6000, 400, 110, 850); createGoldCoin(world, 5200, 320); createTreasureGem(world, 5000, 100);
+            placeLavaGap(world, 7200, 7450, 400);
+            placeGroundSeg(world, 7450, 9200, 400);
+            createGoldCoin(world, 8000, 320);
+            createCheckpoint(world, 9000, 400);
+        } else if (layout === 7) { // 도약의 협곡
+            placeGroundSeg(world, 0, 1800, 400);
+            createSlope(world, 2000, 470, 550, 60, -Math.PI/6);
+            // 2300-3000: 넓은 도약 구간 (부스터/스프링 추천)
+            placeGroundSeg(world, 3000, 4800, 350);
+            createGoldCoin(world, 3300, 200); createGoldCoin(world, 3700, 180);
+            createTreasureGem(world, 4200, 200);
+            createSlope(world, 5000, 420, 550, 60, -Math.PI/6);
+            // 5300-6000: 두 번째 도약 구간
+            placeGroundSeg(world, 6000, 7800, 400);
+            placeWall(world, 6500, 400, 50, 150);
+            createGoldCoin(world, 7000, 320); createGoldCoin(world, 7400, 320);
+            placeLavaGap(world, 7800, 8050, 400);
+            placeGroundSeg(world, 8050, 10500, 400);
+            createGoldCoin(world, 8400, 320); createGoldCoin(world, 8900, 320); createGoldCoin(world, 9400, 320);
+            spawnMonster(world, 9000, 250); spawnMonster(world, 9600, 250);
+            createCheckpoint(world, 10300, 400);
+        } else if (layout === 8) { // 슬라임 대습격
+            placeGroundSeg(world, 0, 9500, 400);
+            for (let i = 0; i < 12; i++) spawnMonster(world, 1200 + i * 700, 300);
+            for (let i = 0; i < 10; i++) createGoldCoin(world, 900 + i * 850, 320);
+            createTreasureGem(world, 3000, 250); createTreasureGem(world, 7000, 250);
+            createCheckpoint(world, 9300, 400);
+        } else if (layout === 9) { // 지옥의 포화
+            placeGroundSeg(world, 0, 11000, 400);
+            for (let i = 0; i < 20; i++) createGoldCoin(world, 500 + i * 500, 320);
+            createTreasureGem(world, 1500, 250); createTreasureGem(world, 4000, 250); createTreasureGem(world, 6500, 250); createTreasureGem(world, 9000, 250);
+            placeWall(world, 3000, 400, 40, 90); placeWall(world, 8000, 400, 40, 90);
+            createCheckpoint(world, 10800, 400);
+        } else if (layout === 10) { // 최종 결전
+            placeGroundSeg(world, 0, 4200, 400);
+            placeWall(world, 1600, 400, 60, 250);
+            spawnMonster(world, 2600, 300); spawnMonster(world, 3200, 300); spawnMonster(world, 3800, 300);
+            createSlope(world, 4500, 420, 600, 60, -Math.PI/6);
+            placeGroundSeg(world, 4800, 6200, 350);
+            createGoldCoin(world, 5100, 200); createGoldCoin(world, 5600, 200);
+            placeLavaGap(world, 6200, 6450, 350);
+            placeGroundSeg(world, 6450, 11500, 400);
+            spawnMonster(world, 7200, 300); spawnMonster(world, 8300, 300);
+            placeWall(world, 8800, 400, 70, 300);
+            createGoldCoin(world, 7600, 320); createGoldCoin(world, 8100, 320);
+            createTreasureGem(world, 8600, 200);
+            createCheckpoint(world, 11300, 400);
+        }
+    }
+
+    function showMessage(text, bgClass, scaleClass) { const m = document.getElementById('message-box'); m.innerHTML = text; m.className = `absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white px-10 py-5 rounded-full font-black text-3xl shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-all duration-500 z-50 text-center border-4 border-white opacity-100 ${bgClass} ${scaleClass}`; }
+    function hideMessage() { document.getElementById('message-box').className = `absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-10 py-5 rounded-full font-black text-3xl transition-all duration-500 opacity-0 scale-90 pointer-events-none z-50 text-center border-4 border-white`; }
+
+    function resizeCanvas() {
+        buildCanvas.width = window.innerWidth; buildCanvas.height = window.innerHeight;
+        const editCanvasEl = document.getElementById('edit-canvas'); if (editCanvasEl) { editCanvasEl.width = window.innerWidth; editCanvasEl.height = window.innerHeight; }
+        offsetX = window.innerWidth / 2; offsetY = window.innerHeight / 2;
+        if (currentMode === 'build') drawBuildMode();
+        if (currentMode === 'edit') drawEditMode();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // 시작 시 모든 기능 초기화
+    updateStatusUI();
+    updateFrameCache(); // 프레임 강제 사전 렌더링
+    resizeCanvas();
+    switchMode('build');
+</script>
+</body>
+</html>
