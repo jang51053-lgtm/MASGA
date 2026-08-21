@@ -2,21 +2,25 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>보물선 크래프트: 나만의 차량 모험</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1e272e; color: white; user-select: none; font-family: 'Inter', sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #1e272e; color: white; user-select: none; font-family: 'Inter', sans-serif; touch-action: none; overscroll-behavior: none; -webkit-user-select: none; }
         #build-ui, #map-edit-ui, #online-ui, #play-ui, #quiz-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         .interactive { pointer-events: auto; }
         ::-webkit-scrollbar { display: none; }
-        #build-canvas, #edit-canvas { cursor: crosshair; }
+        #build-canvas, #edit-canvas { cursor: crosshair; touch-action: none; }
+        #edit-minimap { touch-action: none; }
         .tool-active { background-color: #3867d6 !important; border-color: #4b7bec !important; }
         .tab-active { border-bottom: 4px solid #3498db; color: #3498db; }
         .disabled-btn { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
+        #map-edit-ui .interactive.flex.flex-col.w-\[300px\] { max-height: calc(100vh - 220px); }
+        .touch-ctrl-btn { width: 62px; height: 62px; border-radius: 9999px; font-size: 22px; font-weight: 900; color: white; border: 3px solid rgba(255,255,255,0.55); box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+        .touch-ctrl-btn:active { filter: brightness(1.3); transform: scale(0.94); }
     </style>
 </head>
 <body>
@@ -113,7 +117,7 @@
 
     <!-- 4. 맵 에디터 UI -->
     <div id="map-edit-ui" class="z-20 h-full flex p-6 pt-20 gap-6 hidden pointer-events-none">
-        <div class="interactive bg-gray-800 bg-opacity-95 p-5 rounded-xl shadow-2xl border border-gray-600 flex flex-col w-[300px] pointer-events-auto">
+        <div class="interactive bg-gray-800 bg-opacity-95 p-5 rounded-xl shadow-2xl border border-gray-600 flex flex-col w-[300px] overflow-y-auto pointer-events-auto">
             <h1 class="text-xl font-black text-purple-400 mb-2">🗺️ 맵 에디터</h1>
             <p class="text-xs text-gray-400 mb-3">장애물을 배치하여 맵을 만드세요! 마우스 휠로 확대/축소, 우클릭 드래그로 화면 이동, 아래 미니맵 클릭으로 순간 이동할 수 있어요.</p>
             <div class="grid grid-cols-3 gap-2 mb-4">
@@ -133,14 +137,14 @@
                 <button class="interactive px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow transition" onclick="testMyMap()">🕹️ 내 맵 테스트하기</button>
             </div>
             <div class="mt-4 pt-4 border-t border-gray-600 flex flex-col gap-2">
-                <h3 class="text-gray-300 font-bold text-sm">🌐 온라인에 공유하기</h3>
-                <input id="share-map-name" type="text" maxlength="20" placeholder="맵 이름" class="interactive px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-sm text-white outline-none focus:border-blue-500">
-                <input id="share-author-name" type="text" maxlength="12" placeholder="제작자 닉네임" class="interactive px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-sm text-white outline-none focus:border-blue-500">
-                <button id="share-map-btn" class="interactive px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow transition" onclick="shareMapOnline()">📤 온라인에 공유</button>
+                <h3 class="text-gray-300 font-bold text-sm">✅ 맵 완성하기</h3>
+                <input id="share-map-name" type="text" maxlength="20" placeholder="맵 제목" class="interactive px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-sm text-white outline-none focus:border-blue-500">
+                <input id="share-author-name" type="text" maxlength="12" placeholder="제작자 이름" class="interactive px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-sm text-white outline-none focus:border-blue-500">
+                <button id="share-map-btn" class="interactive px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow transition" onclick="shareMapOnline()">✅ 완성하고 온라인에 공유</button>
                 <p id="share-status" class="text-xs text-gray-400"></p>
             </div>
         </div>
-        <div id="edit-minimap-bar" class="interactive absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-90 rounded-xl border border-gray-600 shadow-lg p-3 flex flex-col gap-2" style="width:70%; max-width:900px;">
+        <div id="edit-minimap-bar" class="interactive absolute bottom-6 bg-gray-900 bg-opacity-90 rounded-xl border border-gray-600 shadow-lg p-3 flex flex-col gap-2" style="left:332px; right:16px; max-width:900px; margin:0 auto;">
             <div class="flex justify-between items-center text-xs text-gray-300 font-bold">
                 <span>🗺️ 전체 맵 미리보기 (클릭/드래그로 이동)</span>
                 <span id="edit-map-length">길이: 0px</span>
@@ -178,6 +182,19 @@
             <button class="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg transition" onclick="switchMode('build')">🛑 제작소로 복귀</button>
         </div>
         <div id="message-box" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-10 py-5 rounded-full font-black text-3xl shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-all duration-500 opacity-0 scale-90 z-50 text-center border-4 border-white pointer-events-none">메시지</div>
+
+        <!-- 터치 조작 버튼 (아이패드 등 키보드가 없는 기기용) -->
+        <div class="pointer-events-auto absolute bottom-6 right-6 flex items-end gap-4">
+            <div class="flex flex-col items-center gap-3">
+                <button id="tc-boost" class="touch-ctrl-btn bg-red-600" title="부스터 (SHIFT)">⚡</button>
+                <button id="tc-cannon" class="touch-ctrl-btn bg-purple-600" title="대포 (F)">💥</button>
+            </div>
+            <button id="tc-jump" class="touch-ctrl-btn bg-green-600" style="width:80px;height:80px;font-size:28px;" title="점프 (SPACE)">⬆️</button>
+            <div class="flex gap-3">
+                <button id="tc-left" class="touch-ctrl-btn bg-gray-700" style="width:76px;height:76px;font-size:28px;" title="왼쪽 (◀)">◀</button>
+                <button id="tc-right" class="touch-ctrl-btn bg-gray-700" style="width:76px;height:76px;font-size:28px;" title="오른쪽 (▶)">▶</button>
+            </div>
+        </div>
     </div>
 
     <!-- 7. 수학 퀴즈 UI -->
@@ -339,15 +356,25 @@
     }
 
     let currentQuizAnswer = 0;
+    // 퀴즈 창이 열려있는 동안이나, 방금 닫힌 직후(터치기기의 지연된 유령 클릭 대비) 캔버스 조작이
+    // 뒤로 새어 들어가 엉뚱한 위치에 부품/지형이 설치되지 않도록 막는 안전장치입니다.
+    let quizGuardUntil = 0;
+    function isQuizBlockingCanvas() {
+        const q = document.getElementById('quiz-ui');
+        if (q && !q.classList.contains('hidden')) return true;
+        return Date.now() < quizGuardUntil;
+    }
     function openQuiz() {
         document.getElementById('quiz-ui').classList.remove('hidden');
         document.getElementById('quiz-ui').classList.add('flex');
+        quizGuardUntil = Date.now() + 400;
         generateQuiz();
     }
     function closeQuiz() {
         document.getElementById('quiz-ui').classList.add('hidden');
         document.getElementById('quiz-ui').classList.remove('flex');
         document.getElementById('quiz-answer').value = '';
+        quizGuardUntil = Date.now() + 400;
     }
     function generateQuiz() {
         const num1 = Math.floor(Math.random() * 50) + 10;
@@ -422,11 +449,43 @@
         hoverPos = getMousePos(e, buildCanvas); drawBuildMode();
     });
     buildCanvas.addEventListener('mousedown', (e) => {
-        if (currentMode !== 'build') return;
+        if (currentMode !== 'build' || isQuizBlockingCanvas()) return;
         if (e.button === 2 || currentTool === 'pan') { isPanning = true; lastPanX = e.clientX; lastPanY = e.clientY; return; }
         if (e.button === 0) { applyTool(hoverPos.mouseX, hoverPos.mouseY); drawBuildMode(); }
     });
     buildCanvas.addEventListener('mouseup', () => isPanning = false); buildCanvas.addEventListener('mouseleave', () => { hoverPos = null; isPanning = false; drawBuildMode(); });
+
+    // ---- 터치 지원 (아이패드 등) : 손가락 1개=선택한 도구 사용/화면이동(이동 도구 선택 시), 손가락 2개=화면 이동 ----
+    buildCanvas.addEventListener('touchstart', (e) => {
+        if (currentMode !== 'build' || isQuizBlockingCanvas()) return;
+        e.preventDefault();
+        if (e.touches.length >= 2) {
+            isPanning = true;
+            lastPanX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            lastPanY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            return;
+        }
+        const t = e.touches[0]; if (!t) return;
+        if (currentTool === 'pan') { isPanning = true; lastPanX = t.clientX; lastPanY = t.clientY; return; }
+        hoverPos = getMousePos(t, buildCanvas);
+        applyTool(hoverPos.mouseX, hoverPos.mouseY);
+        drawBuildMode();
+    }, { passive: false });
+    buildCanvas.addEventListener('touchmove', (e) => {
+        if (currentMode !== 'build') return;
+        e.preventDefault();
+        if (e.touches.length >= 2) {
+            const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            if (isPanning) { offsetX += cx - lastPanX; offsetY += cy - lastPanY; lastPanX = cx; lastPanY = cy; drawBuildMode(); }
+            return;
+        }
+        const t = e.touches[0]; if (!t) return;
+        if (isPanning) { offsetX += t.clientX - lastPanX; offsetY += t.clientY - lastPanY; lastPanX = t.clientX; lastPanY = t.clientY; drawBuildMode(); return; }
+        hoverPos = getMousePos(t, buildCanvas); drawBuildMode();
+    }, { passive: false });
+    buildCanvas.addEventListener('touchend', (e) => { if (e.touches.length === 0) isPanning = false; }, { passive: false });
+    buildCanvas.addEventListener('touchcancel', () => { isPanning = false; hoverPos = null; }, { passive: false });
 
     function applyTool(x, y) {
         if (currentTool === 'eraser') {
@@ -486,7 +545,7 @@
 
     editCanvas.addEventListener('contextmenu', e => e.preventDefault());
     editCanvas.addEventListener('mousedown', (e) => {
-        if (currentMode !== 'edit') return;
+        if (currentMode !== 'edit' || isQuizBlockingCanvas()) return;
         if (e.button === 2) { isEditPanning = true; lastEditPanX = e.clientX; lastEditPanY = e.clientY; return; }
         const { mx, my } = getEditMousePos(e);
         if (currentEditTool === 'platform' || currentEditTool === 'lava') {
@@ -515,6 +574,71 @@
         }
     });
     editCanvas.addEventListener('mouseleave', () => { isEditPanning = false; editDragStart = null; editHoverPos = null; });
+
+    // ---- 터치 지원 (아이패드 등) : 손가락 1개=선택한 도구로 그리기/배치/지우기, 손가락 2개=화면 이동+핀치 확대축소 ----
+    let editPinchStartDist = null, editPinchStartScale = 1;
+    editCanvas.addEventListener('touchstart', (e) => {
+        if (currentMode !== 'edit' || isQuizBlockingCanvas()) return;
+        e.preventDefault();
+        if (e.touches.length >= 2) {
+            editDragStart = null; editHoverPos = null;
+            isEditPanning = true;
+            const t0 = e.touches[0], t1 = e.touches[1];
+            lastEditPanX = (t0.clientX + t1.clientX) / 2; lastEditPanY = (t0.clientY + t1.clientY) / 2;
+            editPinchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+            editPinchStartScale = editScale;
+            return;
+        }
+        const t = e.touches[0]; if (!t) return;
+        const { mx, my } = getEditMousePos(t);
+        if (currentEditTool === 'platform' || currentEditTool === 'lava') {
+            editDragStart = { x: mx, y: my };
+        } else if (currentEditTool === 'treasure' || currentEditTool === 'checkpoint') {
+            mapEditParts.push({ type: currentEditTool, x: mx, y: my });
+            drawEditMode();
+        } else if (currentEditTool === 'eraser') {
+            eraseEditPartAt(mx, my);
+        }
+    }, { passive: false });
+    editCanvas.addEventListener('touchmove', (e) => {
+        if (currentMode !== 'edit') return;
+        e.preventDefault();
+        if (e.touches.length >= 2) {
+            const t0 = e.touches[0], t1 = e.touches[1];
+            const cx = (t0.clientX + t1.clientX) / 2, cy = (t0.clientY + t1.clientY) / 2;
+            const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+            const r = editCanvas.getBoundingClientRect();
+            const cxr = cx - r.left, cyr = cy - r.top;
+            if (editPinchStartDist) {
+                const worldXBefore = (cxr - editOffsetX) / editScale, worldYBefore = (cyr - editOffsetY) / editScale;
+                editScale = Math.min(EDIT_MAX_SCALE, Math.max(EDIT_MIN_SCALE, editPinchStartScale * (dist / editPinchStartDist)));
+                editOffsetX = cxr - worldXBefore * editScale;
+                editOffsetY = cyr - worldYBefore * editScale;
+            }
+            editOffsetX += cx - lastEditPanX; editOffsetY += cy - lastEditPanY;
+            lastEditPanX = cx; lastEditPanY = cy;
+            drawEditMode();
+            return;
+        }
+        const t = e.touches[0]; if (!t) return;
+        const { mx, my } = getEditMousePos(t);
+        editHoverPos = { mx, my };
+        drawEditMode();
+    }, { passive: false });
+    editCanvas.addEventListener('touchend', (e) => {
+        if (currentMode !== 'edit') return;
+        isEditPanning = false; editPinchStartDist = null;
+        if (e.touches.length > 0) return; // 손가락이 아직 남아있으면(2개→1개) 배치를 확정하지 않음
+        if (editDragStart && (currentEditTool === 'platform' || currentEditTool === 'lava')) {
+            const t = e.changedTouches[0]; if (!t) { editDragStart = null; return; }
+            const { mx, my } = getEditMousePos(t);
+            const x1 = Math.min(editDragStart.x, mx), x2 = Math.max(editDragStart.x, mx);
+            const y1 = Math.min(editDragStart.y, my), y2 = Math.max(editDragStart.y, my);
+            if (Math.abs(x2 - x1) > 10 && Math.abs(y2 - y1) > 10) { mapEditParts.push({ type: currentEditTool, x1, y1, x2, y2 }); }
+            editDragStart = null; drawEditMode();
+        }
+    }, { passive: false });
+    editCanvas.addEventListener('touchcancel', () => { isEditPanning = false; editDragStart = null; editHoverPos = null; editPinchStartDist = null; }, { passive: false });
 
     // 마우스 휠로 커서 위치를 기준으로 확대/축소 — 긴 맵을 축소해서 전체를 보며 배치할 수 있습니다.
     editCanvas.addEventListener('wheel', (e) => {
@@ -679,6 +803,10 @@
         minimapCanvas.addEventListener('mousedown', (e) => { isMinimapDragging = true; jumpToMinimap(e); });
         window.addEventListener('mousemove', (e) => { if (isMinimapDragging) jumpToMinimap(e); });
         window.addEventListener('mouseup', () => isMinimapDragging = false);
+        minimapCanvas.addEventListener('touchstart', (e) => { isMinimapDragging = true; if (e.touches[0]) jumpToMinimap(e.touches[0]); e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchmove', (e) => { if (isMinimapDragging && e.touches[0]) { jumpToMinimap(e.touches[0]); e.preventDefault(); } }, { passive: false });
+        window.addEventListener('touchend', () => isMinimapDragging = false);
+        window.addEventListener('touchcancel', () => isMinimapDragging = false);
     }
 
     function clearEditMap() { mapEditParts = []; drawEditMode(); showToast("맵을 초기화했습니다."); }
@@ -788,8 +916,11 @@
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 plays: 0
             });
-            statusEl.textContent = '✅ 공유 완료! 온라인 의뢰 탭에서 확인해보세요.';
+            statusEl.textContent = '✅ 공유 완료! 온라인 의뢰 탭으로 이동합니다...';
             showToast("맵을 온라인에 공유했습니다!");
+            document.getElementById('share-map-name').value = '';
+            document.getElementById('share-author-name').value = '';
+            setTimeout(() => { if (currentMode === 'edit') switchMode('online'); }, 900);
         } catch (e) {
             console.error('맵 공유 실패:', e);
             statusEl.textContent = '❌ 공유 실패 (Firestore 규칙을 확인하세요).';
@@ -808,6 +939,26 @@
 
     window.addEventListener('keydown', (e) => keys[e.code] = true);
     window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+    // ---- 화면 터치 조작 버튼 (아이패드 등 키보드가 없는 기기에서도 이동/점프/부스터/대포 조작 가능) ----
+    function bindTouchControlButton(id, keyCodes) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        const press = (e) => { e.preventDefault(); keyCodes.forEach(k => keys[k] = true); };
+        const release = (e) => { if (e) e.preventDefault(); keyCodes.forEach(k => keys[k] = false); };
+        btn.addEventListener('touchstart', press, { passive: false });
+        btn.addEventListener('touchend', release, { passive: false });
+        btn.addEventListener('touchcancel', release, { passive: false });
+        // 마우스로도 누를 수 있게 (트랙패드/데스크탑 겸용 기기 대비)
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+    }
+    bindTouchControlButton('tc-left', ['ArrowLeft']);
+    bindTouchControlButton('tc-right', ['ArrowRight']);
+    bindTouchControlButton('tc-jump', ['Space']);
+    bindTouchControlButton('tc-boost', ['ShiftLeft']);
+    bindTouchControlButton('tc-cannon', ['KeyF']);
 
     function stopPhysicsEngine() {
         if (render) { Render.stop(render); if (render.canvas) render.canvas.remove(); render = null; }
