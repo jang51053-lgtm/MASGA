@@ -6,6 +6,9 @@
     <title>보물선 크래프트: 나만의 차량 모험</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <!-- poly-decomp: 자유 그리기로 만든 오목한(концave) 프레임 모양을 물리엔진이 여러 볼록 조각으로 정확히 쪼개도록 도와줍니다.
+         이게 없으면 Matter.js가 오목한 부분을 무시하고 볼록 껍질(convex hull)로 뭉뚱그려버립니다. -->
+    <script>!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.decomp=e()}}(function(){return function e(f,o,n){function d(t,l){if(!o[t]){if(!f[t]){var u="function"==typeof require&&require;if(!l&&u)return u(t,!0);if(i)return i(t,!0);throw new Error("Cannot find module '"+t+"'")}var p=o[t]={exports:{}};f[t][0].call(p.exports,function(e){var o=f[t][1][e];return d(o?o:e)},p,p.exports,e,f,o,n)}return o[t].exports}for(var i="function"==typeof require&&require,t=0;t<n.length;t++)d(n[t]);return d}({1:[function(e,f,o){function n(e,f,o){o=o||0;var n,d,i,t,l,u,p,s=[0,0];return n=e[1][1]-e[0][1],d=e[0][0]-e[1][0],i=n*e[0][0]+d*e[0][1],t=f[1][1]-f[0][1],l=f[0][0]-f[1][0],u=t*f[0][0]+l*f[0][1],p=n*l-t*d,D(p,0,o)||(s[0]=(l*i-d*u)/p,s[1]=(n*u-t*i)/p),s}function d(e,f,o,n){var d=f[0]-e[0],i=f[1]-e[1],t=n[0]-o[0],l=n[1]-o[1];if(t*i-l*d===0)return!1;var u=(d*(o[1]-e[1])+i*(e[0]-o[0]))/(t*i-l*d),p=(t*(e[1]-o[1])+l*(o[0]-e[0]))/(l*d-t*i);return u>=0&&1>=u&&p>=0&&1>=p}function i(e,f,o){return(f[0]-e[0])*(o[1]-e[1])-(o[0]-e[0])*(f[1]-e[1])}function t(e,f,o){return i(e,f,o)>0}function l(e,f,o){return i(e,f,o)>=0}function u(e,f,o){return i(e,f,o)<0}function p(e,f,o){return i(e,f,o)<=0}function s(e,f,o,n){if(n){var d=F,t=G;d[0]=f[0]-e[0],d[1]=f[1]-e[1],t[0]=o[0]-f[0],t[1]=o[1]-f[1];var l=d[0]*t[0]+d[1]*t[1],u=Math.sqrt(d[0]*d[0]+d[1]*d[1]),p=Math.sqrt(t[0]*t[0]+t[1]*t[1]),s=Math.acos(l/(u*p));return n>s}return 0===i(e,f,o)}function c(e,f){var o=f[0]-e[0],n=f[1]-e[1];return o*o+n*n}function y(e,f){var o=e.length;return e[0>f?f%o+o:f%o]}function a(e){e.length=0}function m(e,f,o,n){for(var d=o;n>d;d++)e.push(f[d])}function r(e){for(var f=0,o=e,n=1;n<e.length;++n)(o[n][1]<o[f][1]||o[n][1]===o[f][1]&&o[n][0]>o[f][0])&&(f=n);return t(y(e,f-1),y(e,f),y(e,f+1))?!1:(w(e),!0)}function w(e){for(var f=[],o=e.length,n=0;n!==o;n++)f.push(e.pop());for(var n=0;n!==o;n++)e[n]=f[n]}function b(e,f){return u(y(e,f-1),y(e,f),y(e,f+1))}function g(e,f,o){var d,i,t=H,u=I;if(l(y(e,f+1),y(e,f),y(e,o))&&p(y(e,f-1),y(e,f),y(e,o)))return!1;i=c(y(e,f),y(e,o));for(var s=0;s!==e.length;++s)if((s+1)%e.length!==f&&s!==f&&l(y(e,f),y(e,o),y(e,s+1))&&p(y(e,f),y(e,o),y(e,s))&&(t[0]=y(e,f),t[1]=y(e,o),u[0]=y(e,s),u[1]=y(e,s+1),d=n(t,u),c(y(e,f),d)<i))return!1;return!0}function x(e,f,o){for(var n=0;n!==e.length;++n)if(n!==f&&n!==o&&(n+1)%e.length!==f&&(n+1)%e.length!==o&&d(y(e,f),y(e,o),y(e,n),y(e,n+1)))return!1;return!0}function j(e,f,o,n){var d=n||[];if(a(d),o>f)for(var i=f;o>=i;i++)d.push(e[i]);else{for(var i=0;o>=i;i++)d.push(e[i]);for(var i=f;i<e.length;i++)d.push(e[i])}return d}function v(e){for(var f=[],o=[],n=[],d=[],i=Number.MAX_VALUE,t=0;t<e.length;++t)if(b(e,t))for(var l=0;l<e.length;++l)if(g(e,t,l)){o=v(j(e,t,l,d)),n=v(j(e,l,t,d));for(var u=0;u<n.length;u++)o.push(n[u]);o.length<i&&(f=o,i=o.length,f.push([y(e,t),y(e,l)]))}return f}function h(e){var f=v(e);return f.length>0?k(e,f):[e]}function k(e,f){if(0===f.length)return[e];if(f instanceof Array&&f.length&&f[0]instanceof Array&&2===f[0].length&&f[0][0]instanceof Array){for(var o=[e],n=0;n<f.length;n++)for(var d=f[n],i=0;i<o.length;i++){var t=o[i],l=k(t,d);if(l){o.splice(i,1),o.push(l[0],l[1]);break}}return o}var d=f,n=e.indexOf(d[0]),i=e.indexOf(d[1]);return-1!==n&&-1!==i?[j(e,n,i),j(e,i,n)]:!1}function q(e){var f,o=e;for(f=0;f<o.length-1;f++)for(var n=0;f-1>n;n++)if(d(o[f],o[f+1],o[n],o[n+1]))return!1;for(f=1;f<o.length-2;f++)if(d(o[0],o[o.length-1],o[f],o[f+1]))return!1;return!0}function z(e,f,o,n,d){d=d||0;var i=f[1]-e[1],t=e[0]-f[0],l=i*e[0]+t*e[1],u=n[1]-o[1],p=o[0]-n[0],s=u*o[0]+p*o[1],c=i*p-u*t;return D(c,0,d)?[0,0]:[(p*l-t*s)/c,(i*s-u*l)/c]}function A(e,f,o,n,d,i,s){i=i||100,s=s||0,d=d||25,f="undefined"!=typeof f?f:[],o=o||[],n=n||[];var a=[0,0],r=[0,0],w=[0,0],g=0,j=0,v=0,h=0,k=0,q=0,B=0,C=[],D=[],E=e,F=e;if(F.length<3)return f;if(s++,s>i)return console.warn("quickDecomp: max level ("+i+") reached."),f;for(var G=0;G<e.length;++G)if(b(E,G)){o.push(E[G]),g=j=Number.MAX_VALUE;for(var H=0;H<e.length;++H)t(y(E,G-1),y(E,G),y(E,H))&&p(y(E,G-1),y(E,G),y(E,H-1))&&(w=z(y(E,G-1),y(E,G),y(E,H),y(E,H-1)),u(y(E,G+1),y(E,G),w)&&(v=c(E[G],w),j>v&&(j=v,r=w,q=H))),t(y(E,G+1),y(E,G),y(E,H+1))&&p(y(E,G+1),y(E,G),y(E,H))&&(w=z(y(E,G+1),y(E,G),y(E,H),y(E,H+1)),t(y(E,G-1),y(E,G),w)&&(v=c(E[G],w),g>v&&(g=v,a=w,k=H)));if(q===(k+1)%e.length)w[0]=(r[0]+a[0])/2,w[1]=(r[1]+a[1])/2,n.push(w),k>G?(m(C,E,G,k+1),C.push(w),D.push(w),0!==q&&m(D,E,q,E.length),m(D,E,0,G+1)):(0!==G&&m(C,E,G,E.length),m(C,E,0,k+1),C.push(w),D.push(w),m(D,E,q,G+1));else{if(q>k&&(k+=e.length),h=Number.MAX_VALUE,q>k)return f;for(var H=q;k>=H;++H)l(y(E,G-1),y(E,G),y(E,H))&&p(y(E,G+1),y(E,G),y(E,H))&&(v=c(y(E,G),y(E,H)),h>v&&x(E,G,H)&&(h=v,B=H%e.length));B>G?(m(C,E,G,B+1),0!==B&&m(D,E,B,F.length),m(D,E,0,G+1)):(0!==G&&m(C,E,G,F.length),m(C,E,0,B+1),m(D,E,B,G+1))}return C.length<D.length?(A(C,f,o,n,d,i,s),A(D,f,o,n,d,i,s)):(A(D,f,o,n,d,i,s),A(C,f,o,n,d,i,s)),f}return f.push(e),f}function B(e,f){for(var o=0,n=e.length-1;e.length>3&&n>=0;--n)s(y(e,n-1),y(e,n),y(e,n+1),f)&&(e.splice(n%e.length,1),o++);return o}function C(e,f){for(var o=e.length-1;o>=1;--o)for(var n=e[o],d=o-1;d>=0;--d)E(n,e[d],f)&&e.splice(o,1)}function D(e,f,o){return o=o||0,Math.abs(e-f)<=o}function E(e,f,o){return D(e[0],f[0],o)&&D(e[1],f[1],o)}f.exports={decomp:h,quickDecomp:A,isSimple:q,removeCollinearPoints:B,removeDuplicatePoints:C,makeCCW:r};var F=[],G=[],H=[],I=[]},{}]},{},[1])(1)});</script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <style>
@@ -67,7 +70,7 @@
                     <h3 class="text-gray-300 font-bold text-sm">새 프레임 조각 색상</h3>
                     <input type="color" id="paint-color" value="#8e44ad" class="cursor-pointer w-8 h-8 border-0 rounded p-0 bg-transparent">
                 </div>
-                <p class="text-[11px] text-gray-400 mt-2 leading-snug">🟪 프레임 조각 도구를 고르고 캔버스를 드래그하면 원하는 모양으로 차체를 그릴 수 있어요! 여러 조각을 이어붙여 자유롭게 꾸며보세요.</p>
+                <p class="text-[11px] text-gray-400 mt-2 leading-snug">⬜ 그리기가 번거로우면 기본 프레임을 클릭 한 번으로 바로 배치하고, ✏️ 자유 프레임으로 원하는 윤곽선을 직접 그려서 나만의 모양을 만들 수도 있어요. 둘 다 같이 써도 돼요!</p>
             </div>
 
             <div class="grid grid-cols-2 gap-2 mb-4">
@@ -77,8 +80,11 @@
 
             <h3 class="text-gray-300 font-bold mb-2 text-sm border-b border-gray-600 pb-1">부품 상점</h3>
             <div class="flex flex-col gap-2 flex-grow mb-4 overflow-y-auto">
-                <button id="tool-frame" class="tool-btn tool-active interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-purple-200" onclick="selectTool('frame')">
-                    <span>🟪 프레임 조각 (드래그)</span><span class="text-yellow-400 text-xs">크기별 요금</span>
+                <button id="tool-frame-basic" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-purple-200" onclick="selectTool('frame-basic')">
+                    <span>⬜ 기본 프레임 (클릭 배치)</span><span class="text-yellow-400 text-xs">75 G</span>
+                </button>
+                <button id="tool-frame-poly" class="tool-btn tool-active interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-purple-200" onclick="selectTool('frame-poly')">
+                    <span>✏️ 자유 프레임 (윤곽선 그리기)</span><span class="text-yellow-400 text-xs">면적별 요금</span>
                 </button>
                 <button id="tool-wheel-circle" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center" onclick="selectTool('wheel-circle')">
                     <span>⚪ 기본 바퀴</span><span class="text-yellow-400 text-xs">10 G</span>
@@ -97,6 +103,15 @@
                 </button>
                 <button id="tool-cannon" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-purple-300 disabled-btn" onclick="selectTool('cannon')">
                     <span>💥 파괴 대포 (St.5)</span><span class="text-yellow-400 text-xs">150 G</span>
+                </button>
+                <button id="tool-jack" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-orange-300" onclick="selectTool('jack')">
+                    <span>🔧 유압 리커버리 잭</span><span class="text-yellow-400 text-xs">60 G</span>
+                </button>
+                <button id="tool-lifter" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-blue-300" onclick="selectTool('lifter')">
+                    <span>🔩 유압 램프 리프터</span><span class="text-yellow-400 text-xs">55 G</span>
+                </button>
+                <button id="tool-drill" class="tool-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition flex justify-between items-center text-gray-300" onclick="selectTool('drill')">
+                    <span>🌀 스핀 드릴</span><span class="text-yellow-400 text-xs">90 G</span>
                 </button>
             </div>
 
@@ -117,7 +132,7 @@
     <div id="map-edit-ui" class="z-20 h-full flex p-6 pt-20 gap-6 hidden pointer-events-none">
         <div class="interactive bg-gray-800 bg-opacity-95 p-5 rounded-xl shadow-2xl border border-gray-600 flex flex-col w-[300px] overflow-y-auto pointer-events-auto">
             <h1 class="text-xl font-black text-purple-400 mb-2">🗺️ 맵 에디터</h1>
-            <p class="text-xs text-gray-400 mb-3">장애물을 배치하여 맵을 만드세요! 마우스 휠로 확대/축소, 우클릭 드래그로 화면 이동, 아래 미니맵 클릭으로 순간 이동할 수 있어요.</p>
+            <p class="text-xs text-gray-400 mb-3">장애물을 배치하여 맵을 만드세요! 마우스 휠로 확대/축소, 우클릭 드래그로 화면 이동, 아래 미니맵 클릭으로 순간 이동할 수 있어요. 🚗시작 위치를 안 놓으면 기본 위치에서 시작해요. 👾몬스터는 다가오고, 🌀회전 불꽃/🔺가시는 닿으면 즉시 실패, 💧간헐천은 위로 튕겨올려줘요.</p>
             <div class="grid grid-cols-3 gap-2 mb-4">
                 <button class="interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-sm font-bold" onclick="editZoom(1.25)" title="확대">🔍+</button>
                 <button class="interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-sm font-bold" onclick="editZoom(0.8)" title="축소">🔍-</button>
@@ -128,6 +143,11 @@
                 <button id="edit-tool-lava" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left" onclick="selectEditTool('lava')">🔥 용암 (드래그)</button>
                 <button id="edit-tool-treasure" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left" onclick="selectEditTool('treasure')">💎 보물 (클릭, 맵당 1개)</button>
                 <button id="edit-tool-checkpoint" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left text-yellow-300" onclick="selectEditTool('checkpoint')">🏁 결승선 (클릭)</button>
+                <button id="edit-tool-start" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left text-green-300 mt-2" onclick="selectEditTool('start')">🚗 시작 위치 (클릭, 맵당 1개)</button>
+                <button id="edit-tool-monster" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left text-purple-300" onclick="selectEditTool('monster')">👾 몬스터 (클릭)</button>
+                <button id="edit-tool-firebar" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left text-orange-300 mt-2" onclick="selectEditTool('firebar')">🌀 회전 불꽃 (클릭)</button>
+                <button id="edit-tool-geyser" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left text-blue-300" onclick="selectEditTool('geyser')">💧 간헐천 (클릭)</button>
+                <button id="edit-tool-spike" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-left text-gray-300" onclick="selectEditTool('spike')">🔺 가시 장애물 (클릭)</button>
                 <button id="edit-tool-eraser" class="edit-btn interactive px-3 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-red-900 transition text-red-400 text-left mt-4" onclick="selectEditTool('eraser')">🗑️ 지우기</button>
             </div>
             <div class="flex flex-col gap-2 mt-4">
@@ -173,6 +193,9 @@
                     <p class="text-green-300">SPACE : 다중 점프 (스프링)</p>
                     <p class="text-red-300">SHIFT : 부스터 가속</p>
                     <p class="text-purple-300">F : 대포 발사</p>
+                    <p class="text-orange-300">R : 유압 리커버리 잭 (뒤집혔을 때 복구)</p>
+                    <p class="text-blue-300">E : 유압 램프 리프터 (경사/절벽 오르기)</p>
+                    <p class="text-gray-400">🌀 드릴은 장착만 하면 부딪힌 벽/몬스터를 자동으로 부숴요</p>
                 </div>
             </div>
         </div>
@@ -181,17 +204,16 @@
         </div>
         <div id="message-box" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-10 py-5 rounded-full font-black text-3xl shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-all duration-500 opacity-0 scale-90 z-50 text-center border-4 border-white pointer-events-none">메시지</div>
 
-        <!-- 터치 조작 버튼 (아이패드 등 키보드가 없는 기기용) -->
-        <div class="pointer-events-auto absolute bottom-6 right-6 flex items-end gap-4">
-            <div class="flex flex-col items-center gap-3">
-                <button id="tc-boost" class="touch-ctrl-btn bg-red-600" title="부스터 (SHIFT)">⚡</button>
-                <button id="tc-cannon" class="touch-ctrl-btn bg-purple-600" title="대포 (F)">💥</button>
-            </div>
-            <button id="tc-jump" class="touch-ctrl-btn bg-green-600" style="width:80px;height:80px;font-size:28px;" title="점프 (SPACE)">⬆️</button>
-            <div class="flex gap-3">
-                <button id="tc-left" class="touch-ctrl-btn bg-gray-700" style="width:76px;height:76px;font-size:28px;" title="왼쪽 (◀)">◀</button>
-                <button id="tc-right" class="touch-ctrl-btn bg-gray-700" style="width:76px;height:76px;font-size:28px;" title="오른쪽 (▶)">▶</button>
-            </div>
+        <!-- 터치 조작 버튼 (아이패드 등 키보드가 없는 기기용) : 한 줄로 나란히 배치 -->
+        <div class="pointer-events-auto absolute bottom-6 right-6 flex items-center gap-2.5">
+            <button id="tc-boost" class="touch-ctrl-btn bg-red-600" title="부스터 (SHIFT)">⚡</button>
+            <button id="tc-cannon" class="touch-ctrl-btn bg-purple-600" title="대포 (F)">💥</button>
+            <button id="tc-jack" class="touch-ctrl-btn bg-orange-600" title="유압 리커버리 잭 (R)">🔧</button>
+            <button id="tc-lifter" class="touch-ctrl-btn bg-blue-500" title="유압 램프 리프터 (E)">🔩</button>
+            <div class="w-px self-stretch bg-white/30 mx-0.5"></div>
+            <button id="tc-jump" class="touch-ctrl-btn bg-green-600" style="width:70px;height:70px;font-size:26px;" title="점프 (SPACE)">⬆️</button>
+            <button id="tc-left" class="touch-ctrl-btn bg-gray-700" style="width:66px;height:66px;font-size:26px;" title="왼쪽 (◀)">◀</button>
+            <button id="tc-right" class="touch-ctrl-btn bg-gray-700" style="width:66px;height:66px;font-size:26px;" title="오른쪽 (▶)">▶</button>
         </div>
     </div>
 
@@ -211,12 +233,46 @@
     </div>
 
 <script>
-    const PRICES = { 'wheel-circle': 10, 'body-block': 15, 'spring': 50, 'booster': 80, 'bulldozer': 100, 'cannon': 150 };
+    const PRICES = { 'wheel-circle': 10, 'body-block': 15, 'spring': 50, 'booster': 80, 'bulldozer': 100, 'cannon': 150, 'jack': 60, 'lifter': 55, 'drill': 90 };
     const WHEEL_RADIUS = 25; const BODY_BLOCK_SIZE = 40;
+    const FIREBAR_RADIUS = 90; const FIREBAR_BALL_COUNT = 3; const FIREBAR_SPEED = 0.03; // 회전 불꽃 장애물 설정
     // 프레임 조각은 크기(면적)에 비례해서 가격이 매겨집니다 (자유롭게 크게 그릴수록 더 비쌉니다).
     function frameCost(w, h) { return Math.max(10, Math.round((Math.abs(w) * Math.abs(h)) / 150)); }
+    // 자유롭게 그린 윤곽선(다각형)의 실제 넓이를 계산합니다 (신발끈 공식). 사각 프레임과 같은 기준(면적/150)으로 요금을 매깁니다.
+    function polygonArea(points) {
+        let area = 0;
+        for (let i = 0; i < points.length; i++) {
+            const p1 = points[i], p2 = points[(i + 1) % points.length];
+            area += p1.x * p2.y - p2.x * p1.y;
+        }
+        return Math.abs(area) / 2;
+    }
+    function polygonCost(points) { return Math.max(10, Math.round(polygonArea(points) / 150)); }
+    // 마우스가 그린 점이 너무 촘촘하면(느리게 그릴 때) 데이터가 커지고 물리 연산도 무거워지므로,
+    // 일정 거리 이상 떨어진 점만 남기는 간단한 단순화를 합니다.
+    function simplifyPoints(points, minDist) {
+        if (points.length <= 2) return points;
+        const out = [points[0]];
+        for (let i = 1; i < points.length; i++) {
+            const last = out[out.length - 1];
+            const dx = points[i].x - last.x, dy = points[i].y - last.y;
+            if (dx * dx + dy * dy >= minDist * minDist) out.push(points[i]);
+        }
+        if (out.length < 3) return points.slice(0, 3).length >= 3 ? points : out;
+        return out;
+    }
+    // Ray casting 방식의 점-다각형 내부 판정 (지우개로 자유 프레임을 클릭했는지 확인할 때 사용)
+    function pointInPolygon(px, py, points) {
+        let inside = false;
+        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+            const xi = points[i].x, yi = points[i].y, xj = points[j].x, yj = points[j].y;
+            const intersect = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
     let offsetX = window.innerWidth/2, offsetY = window.innerHeight/2;
-    let currentMode = 'build'; let currentTool = 'frame'; let paintColor = '#8e44ad';
+    let currentMode = 'build'; let currentTool = 'frame-poly'; let paintColor = '#8e44ad';
     let vehicleParts = []; let customMapData = [];
     let playerGold = 500; let treasureCount = 0; let expCount = 0;
     let currentStage = 1; let maxStageReached = 1;
@@ -248,6 +304,9 @@
         'spring': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="5" y="32" width="30" height="6" fill="#34495e" rx="2"/><rect x="10" y="2" width="20" height="5" fill="#34495e" rx="1"/><path d="M 15 32 Q -5 22 20 18 T 20 8 Q 35 5 15 5" fill="none" stroke="#1abc9c" stroke-width="6" stroke-linecap="round"/></svg>`,
         'bulldozer': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M 5 2 L 25 5 L 35 20 L 25 35 L 5 38 Z" fill="#f1c40f" stroke="#e67e22" stroke-width="2"/><path d="M 8 5 L 20 8 L 25 20 L 20 32 L 8 35 Z" fill="#d35400"/><circle cx="15" cy="15" r="3" fill="#c0392b"/><circle cx="15" cy="25" r="3" fill="#c0392b"/></svg>`,
         'cannon': `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="20" viewBox="0 0 60 20"><rect x="0" y="2" width="20" height="16" fill="#2d3436" rx="3"/><rect x="15" y="5" width="40" height="10" fill="#636e72"/><rect x="55" y="2" width="5" height="16" fill="#c0392b" rx="1"/><rect x="15" y="6" width="35" height="2" fill="#b2bec3"/><circle cx="10" cy="10" r="4" fill="#e74c3c"/></svg>`,
+        'jack': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="32" width="32" height="5" fill="#34495e" rx="2"/><rect x="4" y="3" width="32" height="5" fill="#34495e" rx="2"/><line x1="8" y1="8" x2="32" y2="32" stroke="#e67e22" stroke-width="5" stroke-linecap="round"/><line x1="32" y1="8" x2="8" y2="32" stroke="#e67e22" stroke-width="5" stroke-linecap="round"/><circle cx="20" cy="20" r="5" fill="#f1c40f" stroke="#c0392b" stroke-width="2"/></svg>`,
+        'lifter': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="10" y="34" width="20" height="4" fill="#34495e" rx="1"/><rect x="14" y="18" width="12" height="18" fill="#7f8c8d" stroke="#2c3e50" stroke-width="2" rx="2"/><rect x="16" y="4" width="8" height="16" fill="#3498db" stroke="#2c3e50" stroke-width="2" rx="2"/><polygon points="20,1 28,12 12,12" fill="#5dade2" stroke="#2c3e50" stroke-width="1"/></svg>`,
+        'drill': `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><polygon points="0,6 0,34 22,20" fill="#7f8c8d" stroke="#2c3e50" stroke-width="2"/><polygon points="20,10 20,30 37,20" fill="#c0392b" stroke="#7b241c" stroke-width="2"/><line x1="2" y1="10" x2="18" y2="20" stroke="#2c3e50" stroke-width="2"/><line x1="2" y1="30" x2="18" y2="20" stroke="#2c3e50" stroke-width="2"/><line x1="6" y1="14" x2="16" y2="20" stroke="#bdc3c7" stroke-width="1.5"/><line x1="6" y1="26" x2="16" y2="20" stroke="#bdc3c7" stroke-width="1.5"/></svg>`,
         'flag': `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120" viewBox="0 0 80 120"><path d="M 10 110 L 50 110 Q 60 110 60 120 L 0 120 Q 0 110 10 110 Z" fill="#7f8c8d" stroke="#2c3e50" stroke-width="2"/><rect x="25" y="10" width="10" height="100" fill="#bdc3c7" stroke="#2c3e50" stroke-width="2"/><rect x="25" y="5" width="10" height="10" rx="5" fill="#95a5a6" stroke="#2c3e50" stroke-width="2"/><polygon points="35,15 80,35 35,55" fill="#e74c3c" stroke="#c0392b" stroke-width="2"/></svg>`,
         'gem': `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><polygon points="16,2 29,12 24,30 8,30 3,12" fill="#3fa9e8" stroke="#0f4c75" stroke-width="2"/><polygon points="16,2 29,12 16,13" fill="#8fe0ff"/><polygon points="16,2 3,12 16,13" fill="#5fc4f2"/><polygon points="3,12 16,13 8,30" fill="#1c6fae"/><polygon points="29,12 16,13 24,30" fill="#2585c2"/><polygon points="8,30 16,13 24,30" fill="#0f4c75"/></svg>`,
         'coin': `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="14" fill="#f1c40f" stroke="#c9960a" stroke-width="2"/><circle cx="15" cy="15" r="10" fill="#f9d71c"/><text x="15" y="20" font-family="Arial" font-size="14" font-weight="bold" fill="#c9960a" text-anchor="middle">G</text></svg>`,
@@ -367,7 +426,7 @@
     // 그 값으로 프레임 조각 1개를 만들어 앞에 끼워 넣어서, 기존에 만들던 차량이 사라지지 않게 합니다.
     function migrateOldFrameFormat(parts, w, h, color) {
         const list = Array.isArray(parts) ? parts : [];
-        const hasFrame = list.some(p => p && p.type === 'frame');
+        const hasFrame = list.some(p => p && (p.type === 'frame' || p.type === 'frame-poly'));
         if (!hasFrame && typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
             return [{ type: 'frame', x1: -w / 2, y1: -h / 2, x2: w / 2, y2: h / 2, color: color || '#8e44ad', cost: 0 }, ...list];
         }
@@ -501,51 +560,96 @@
     function selectTool(tool) { currentTool = tool; document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('tool-active')); document.getElementById(`tool-${tool}`).classList.add('tool-active'); }
 
     let isPanning = false; let lastPanX = 0, lastPanY = 0; let hoverPos = null;
-    let buildDragStart = null; // 프레임 조각을 드래그로 그릴 때 시작점
+    let freehandPoints = null; // 자유 프레임(윤곽선)을 그리는 중일 때 지금까지 찍은 점들
+    const FREEHAND_MIN_POINT_DIST = 6; // 이 거리 이상 움직여야 새 점을 추가 (너무 촘촘해지는 것 방지)
+    const BASIC_FRAME_W = 280, BASIC_FRAME_H = 40; // 예전의 "고정 프레임 하나" 버전과 같은 기본 크기
     buildCanvas.addEventListener('contextmenu', e => e.preventDefault());
     function getMousePos(e, c) { const r = c.getBoundingClientRect(); return { mouseX: e.clientX - r.left - offsetX, mouseY: e.clientY - r.top - offsetY }; }
 
-    // 프레임 조각을 여러 개 이어붙여 자유로운 모양을 만들 수 있도록, 크기(면적)에 비례한 요금을 받고 배치합니다.
-    function tryPlaceFramePiece(x1, y1, x2, y2) {
-        const w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
-        if (w < 20 || h < 20) return; // 살짝 클릭만 한 경우엔 무시
-        const cost = frameCost(w, h);
+    // [선택지 추가] 직접 그리기가 번거로운 사람을 위해, 정해진 크기의 기본 프레임을 클릭 한 번으로 바로 배치합니다.
+    // 예전 버전의 "고정된 프레임 하나" 방식을 다시 고를 수 있게 되돌린 것으로, 내부적으로는 자유 프레임과
+    // 똑같이 frame-poly(사각형 4점)로 만들어져서 물리엔진/저장 등 모든 처리가 자유 프레임과 동일하게 됩니다.
+    function tryPlaceBasicFrame(cx, cy) {
+        const w = BASIC_FRAME_W, h = BASIC_FRAME_H;
+        const points = [
+            { x: cx - w / 2, y: cy - h / 2 },
+            { x: cx + w / 2, y: cy - h / 2 },
+            { x: cx + w / 2, y: cy + h / 2 },
+            { x: cx - w / 2, y: cy + h / 2 }
+        ];
+        const cost = polygonCost(points);
         if (playerGold < cost) { showToast(`골드가 부족합니다! (필요: ${cost}G)`, "error"); return; }
         playerGold -= cost;
-        vehicleParts.push({ type: 'frame', x1: Math.min(x1, x2), y1: Math.min(y1, y2), x2: Math.max(x1, x2), y2: Math.max(y1, y2), color: paintColor, cost });
+        vehicleParts.push({ type: 'frame-poly', points, color: paintColor, cost });
         updateStatusUI();
+    }
+
+    // 자유롭게 그린 윤곽선을 하나의 통짜 프레임 조각으로 배치합니다 (여러 사각형을 잇는 대신, 원하는 모양 자체가 하나의 차체가 돼요).
+    function tryPlaceFreehandFrame(rawPoints) {
+        if (!rawPoints || rawPoints.length < 3) { showToast("윤곽선을 좀 더 크게 그려주세요!", "error"); return; }
+        let points = simplifyPoints(rawPoints, FREEHAND_MIN_POINT_DIST);
+        // [핵심 버그 수정] 사용자가 시작점 가까이로 다시 돌아와 윤곽선을 "닫으면", 마지막 점이 첫 점과
+        // 사실상 같은 위치가 됩니다. Matter.js의 Bodies.fromVertices는 이미 도형을 자동으로 닫아서
+        // 처리하기 때문에, 첫 점과 겹치는 마지막 점이 남아있으면 길이 0인 변이 생겨 도형 생성이
+        // 조용히 실패(null 반환)합니다. 첫 점과 너무 가까운 마지막 점은 미리 제거합니다.
+        while (points.length > 3) {
+            const first = points[0], last = points[points.length - 1];
+            const dx = last.x - first.x, dy = last.y - first.y;
+            if (dx * dx + dy * dy < FREEHAND_MIN_POINT_DIST * FREEHAND_MIN_POINT_DIST) points = points.slice(0, -1);
+            else break;
+        }
+        if (points.length < 3) { showToast("윤곽선을 좀 더 크게 그려주세요!", "error"); return; }
+        const area = polygonArea(points);
+        if (area < 400) { showToast("면적이 너무 작아요! 좀 더 크게 그려주세요.", "error"); return; }
+        const cost = polygonCost(points);
+        if (playerGold < cost) { showToast(`골드가 부족합니다! (필요: ${cost}G)`, "error"); return; }
+        playerGold -= cost;
+        vehicleParts.push({ type: 'frame-poly', points, color: paintColor, cost });
+        updateStatusUI();
+    }
+
+    // 자유 프레임 그리기 중 새 점을 추가합니다 (일정 거리 이상 움직였을 때만 - 데이터가 너무 촘촘해지지 않도록).
+    function appendFreehandPoint(pos) {
+        if (!freehandPoints) return;
+        const last = freehandPoints[freehandPoints.length - 1];
+        const dx = pos.mouseX - last.x, dy = pos.mouseY - last.y;
+        if (dx * dx + dy * dy >= FREEHAND_MIN_POINT_DIST * FREEHAND_MIN_POINT_DIST) {
+            freehandPoints.push({ x: pos.mouseX, y: pos.mouseY });
+        }
     }
 
     buildCanvas.addEventListener('mousemove', (e) => {
         if (currentMode !== 'build') return;
         if (isPanning) { offsetX += e.clientX - lastPanX; offsetY += e.clientY - lastPanY; lastPanX = e.clientX; lastPanY = e.clientY; drawBuildMode(); return; }
-        hoverPos = getMousePos(e, buildCanvas); drawBuildMode();
+        hoverPos = getMousePos(e, buildCanvas);
+        if (freehandPoints && currentTool === 'frame-poly') appendFreehandPoint(hoverPos);
+        drawBuildMode();
     });
     buildCanvas.addEventListener('mousedown', (e) => {
         if (currentMode !== 'build' || isQuizBlockingCanvas()) return;
         if (e.button === 2 || currentTool === 'pan') { isPanning = true; lastPanX = e.clientX; lastPanY = e.clientY; return; }
         if (e.button === 0) {
             hoverPos = getMousePos(e, buildCanvas); // 이 mousedown 이전에 mousemove가 한 번도 없었던 경우를 대비한 방어 코드
-            if (currentTool === 'frame') { buildDragStart = { x: hoverPos.mouseX, y: hoverPos.mouseY }; return; }
+            if (currentTool === 'frame-poly') { freehandPoints = [{ x: hoverPos.mouseX, y: hoverPos.mouseY }]; return; }
+            if (currentTool === 'frame-basic') { tryPlaceBasicFrame(hoverPos.mouseX, hoverPos.mouseY); drawBuildMode(); return; }
             applyTool(hoverPos.mouseX, hoverPos.mouseY); drawBuildMode();
         }
     });
     buildCanvas.addEventListener('mouseup', (e) => {
         isPanning = false;
-        if (buildDragStart && currentTool === 'frame') {
-            const p2 = getMousePos(e, buildCanvas);
-            tryPlaceFramePiece(buildDragStart.x, buildDragStart.y, p2.mouseX, p2.mouseY);
-            buildDragStart = null; drawBuildMode();
+        if (freehandPoints && currentTool === 'frame-poly') {
+            tryPlaceFreehandFrame(freehandPoints);
+            freehandPoints = null; drawBuildMode();
         }
     });
-    buildCanvas.addEventListener('mouseleave', () => { hoverPos = null; isPanning = false; buildDragStart = null; drawBuildMode(); });
+    buildCanvas.addEventListener('mouseleave', () => { hoverPos = null; isPanning = false; freehandPoints = null; drawBuildMode(); });
 
     // ---- 터치 지원 (아이패드 등) : 손가락 1개=선택한 도구 사용/화면이동(이동 도구 선택 시), 손가락 2개=화면 이동 ----
     buildCanvas.addEventListener('touchstart', (e) => {
         if (currentMode !== 'build' || isQuizBlockingCanvas()) return;
         e.preventDefault();
         if (e.touches.length >= 2) {
-            buildDragStart = null;
+            freehandPoints = null;
             isPanning = true;
             lastPanX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
             lastPanY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
@@ -554,7 +658,8 @@
         const t = e.touches[0]; if (!t) return;
         if (currentTool === 'pan') { isPanning = true; lastPanX = t.clientX; lastPanY = t.clientY; return; }
         hoverPos = getMousePos(t, buildCanvas);
-        if (currentTool === 'frame') { buildDragStart = { x: hoverPos.mouseX, y: hoverPos.mouseY }; return; }
+        if (currentTool === 'frame-poly') { freehandPoints = [{ x: hoverPos.mouseX, y: hoverPos.mouseY }]; return; }
+        if (currentTool === 'frame-basic') { tryPlaceBasicFrame(hoverPos.mouseX, hoverPos.mouseY); drawBuildMode(); return; }
         applyTool(hoverPos.mouseX, hoverPos.mouseY);
         drawBuildMode();
     }, { passive: false });
@@ -569,34 +674,39 @@
         }
         const t = e.touches[0]; if (!t) return;
         if (isPanning) { offsetX += t.clientX - lastPanX; offsetY += t.clientY - lastPanY; lastPanX = t.clientX; lastPanY = t.clientY; drawBuildMode(); return; }
-        hoverPos = getMousePos(t, buildCanvas); drawBuildMode();
+        hoverPos = getMousePos(t, buildCanvas);
+        if (freehandPoints && currentTool === 'frame-poly') appendFreehandPoint(hoverPos);
+        drawBuildMode();
     }, { passive: false });
     buildCanvas.addEventListener('touchend', (e) => {
         if (e.touches.length > 0) return;
         isPanning = false;
-        if (buildDragStart && currentTool === 'frame' && hoverPos) {
-            tryPlaceFramePiece(buildDragStart.x, buildDragStart.y, hoverPos.mouseX, hoverPos.mouseY);
-            buildDragStart = null; drawBuildMode();
+        if (freehandPoints && currentTool === 'frame-poly') {
+            tryPlaceFreehandFrame(freehandPoints);
+            freehandPoints = null; drawBuildMode();
         }
     }, { passive: false });
-    buildCanvas.addEventListener('touchcancel', () => { isPanning = false; hoverPos = null; buildDragStart = null; }, { passive: false });
+    buildCanvas.addEventListener('touchcancel', () => { isPanning = false; hoverPos = null; freehandPoints = null; }, { passive: false });
 
     function applyTool(x, y) {
         if (currentTool === 'eraser') {
             // 부품(바퀴 등)이 항상 프레임보다 위에 보이므로, 지우기도 부품을 먼저 검사합니다.
             for (let i = vehicleParts.length - 1; i >= 0; i--) {
                 const part = vehicleParts[i];
-                if (part.type === 'frame') continue;
+                if (part.type === 'frame' || part.type === 'frame-poly') continue;
                 const dx = x - part.x, dy = y - part.y;
                 const hit = part.type.startsWith('wheel') ? (dx*dx+dy*dy <= WHEEL_RADIUS*WHEEL_RADIUS) : (Math.abs(dx)<=BODY_BLOCK_SIZE/2 && Math.abs(dy)<=BODY_BLOCK_SIZE/2);
                 if (hit) { playerGold += PRICES[part.type] || 0; vehicleParts.splice(i, 1); updateStatusUI(); return; }
             }
             for (let i = vehicleParts.length - 1; i >= 0; i--) {
                 const part = vehicleParts[i];
-                if (part.type !== 'frame') continue;
-                if (x >= part.x1 && x <= part.x2 && y >= part.y1 && y <= part.y2) { playerGold += part.cost || 0; vehicleParts.splice(i, 1); updateStatusUI(); return; }
+                if (part.type === 'frame') {
+                    if (x >= part.x1 && x <= part.x2 && y >= part.y1 && y <= part.y2) { playerGold += part.cost || 0; vehicleParts.splice(i, 1); updateStatusUI(); return; }
+                } else if (part.type === 'frame-poly') {
+                    if (pointInPolygon(x, y, part.points)) { playerGold += part.cost || 0; vehicleParts.splice(i, 1); updateStatusUI(); return; }
+                }
             }
-        } else if (currentTool !== 'frame' && currentTool !== 'pan') {
+        } else if (currentTool !== 'frame-poly' && currentTool !== 'frame-basic' && currentTool !== 'pan') {
             const cost = PRICES[currentTool];
             if (playerGold >= cost) { playerGold -= cost; vehicleParts.push({ x, y, type: currentTool, color: paintColor }); updateStatusUI(); }
             else { showToast("골드가 부족합니다!", "error"); }
@@ -619,18 +729,39 @@
         context.globalAlpha = 1.0;
     }
 
+    // 자유롭게 그린 윤곽선(다각형) 프레임을 그립니다. 점들을 그대로 이어서 채우고 테두리를 둘러줍니다.
+    function drawFreehandFrame(context, points, color, alpha, close) {
+        if (!points || points.length < 2) return;
+        context.globalAlpha = alpha;
+        context.fillStyle = color || '#8e44ad';
+        context.beginPath();
+        context.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) context.lineTo(points[i].x, points[i].y);
+        if (close !== false) { context.closePath(); context.fill(); }
+        context.strokeStyle = '#2d3436'; context.lineWidth = 3;
+        if (close !== false) context.closePath();
+        context.stroke();
+        context.globalAlpha = 1.0;
+    }
+
     function drawBuildMode() {
         if (currentMode !== 'build') return;
         ctx.fillStyle = '#1e272e'; ctx.fillRect(0, 0, buildCanvas.width, buildCanvas.height);
         ctx.save(); ctx.translate(offsetX, offsetY);
         // 프레임 조각은 항상 맨 뒤(배경)에, 다른 부품들은 그 위에 그립니다.
-        vehicleParts.forEach(p => { if (p.type === 'frame') drawFramePiece(ctx, p.x1, p.y1, p.x2, p.y2, p.color, 1); });
-        vehicleParts.forEach(p => { if (p.type !== 'frame') drawPart(ctx, p.x, p.y, p.type, 1); });
-        if (buildDragStart && hoverPos && currentTool === 'frame') {
-            drawFramePiece(ctx, buildDragStart.x, buildDragStart.y, hoverPos.mouseX, hoverPos.mouseY, paintColor, 0.55);
+        vehicleParts.forEach(p => {
+            if (p.type === 'frame') drawFramePiece(ctx, p.x1, p.y1, p.x2, p.y2, p.color, 1);
+            else if (p.type === 'frame-poly') drawFreehandFrame(ctx, p.points, p.color, 1);
+        });
+        vehicleParts.forEach(p => { if (p.type !== 'frame' && p.type !== 'frame-poly') drawPart(ctx, p.x, p.y, p.type, 1); });
+        if (freehandPoints && currentTool === 'frame-poly') {
+            const preview = hoverPos ? freehandPoints.concat([{ x: hoverPos.mouseX, y: hoverPos.mouseY }]) : freehandPoints;
+            drawFreehandFrame(ctx, preview, paintColor, 0.55, false);
+        } else if (currentTool === 'frame-basic' && hoverPos) {
+            drawFramePiece(ctx, hoverPos.mouseX - BASIC_FRAME_W / 2, hoverPos.mouseY - BASIC_FRAME_H / 2, hoverPos.mouseX + BASIC_FRAME_W / 2, hoverPos.mouseY + BASIC_FRAME_H / 2, paintColor, 0.55);
         } else if (hoverPos) {
             if (currentTool === 'eraser') { ctx.fillStyle='rgba(255,0,0,0.3)'; ctx.beginPath(); ctx.arc(hoverPos.mouseX, hoverPos.mouseY, WHEEL_RADIUS, 0, Math.PI*2); ctx.fill(); }
-            else if (currentTool !== 'pan' && currentTool !== 'frame') drawPart(ctx, hoverPos.mouseX, hoverPos.mouseY, currentTool, 0.5);
+            else if (currentTool !== 'pan' && currentTool !== 'frame-poly' && currentTool !== 'frame-basic') drawPart(ctx, hoverPos.mouseX, hoverPos.mouseY, currentTool, 0.5);
         }
         ctx.restore();
     }
@@ -647,7 +778,11 @@
     // ==================== 맵 에디터 ====================
     const editCanvas = document.getElementById('edit-canvas'); const editCtx = editCanvas.getContext('2d');
     let currentEditTool = 'platform';
-    let mapEditParts = []; // { type: 'platform'|'lava', x1,y1,x2,y2 } or { type: 'treasure'|'checkpoint', x, y }
+    // { type: 'platform'|'lava', x1,y1,x2,y2 } 또는
+    // { type: 'treasure'|'checkpoint'|'start'|'monster'|'firebar'|'geyser'|'spike', x, y }
+    let mapEditParts = [];
+    const EDIT_POINT_TOOLS = ['treasure', 'checkpoint', 'start', 'monster', 'firebar', 'geyser', 'spike'];
+    const EDIT_POINT_ICONS = { treasure: '💎', checkpoint: '🏁', start: '🚗', monster: '👾', firebar: '🌀', geyser: '💧', spike: '🔺' };
     let editOffsetX = 100, editOffsetY = 0; // 맵 좌표계: x=0..8000 정도, y=0(하늘)~600(지면)
     let editScale = 1; const EDIT_MIN_SCALE = 0.08, EDIT_MAX_SCALE = 2.5; // 긴 맵을 축소해서 편집할 수 있도록 확대/축소 지원
     let isEditPanning = false; let lastEditPanX = 0, lastEditPanY = 0;
@@ -666,10 +801,17 @@
 
     // 보상(보물)을 여러 개 배치해 무한 복사로 악용하는 것을 막기 위해, 맵 하나당 보물은 최대 1개만 허용합니다.
     const MAX_TREASURE_PER_MAP = 1;
+    // 시작 위치도 "이 맵은 여기서 출발한다"는 단 하나의 지점이어야 하므로 맵당 1개로 제한합니다.
+    const MAX_START_PER_MAP = 1;
     function placeEditPoint(type, x, y) {
         if (type === 'treasure' && mapEditParts.filter(p => p.type === 'treasure').length >= MAX_TREASURE_PER_MAP) {
             showToast(`보물은 맵 하나에 최대 ${MAX_TREASURE_PER_MAP}개만 배치할 수 있어요!`, "error");
             return;
+        }
+        if (type === 'start' && mapEditParts.filter(p => p.type === 'start').length >= MAX_START_PER_MAP) {
+            // 이미 배치된 시작 위치를 지우지 않고 새 위치를 클릭하면, 기존 것을 자동으로 옮겨줍니다 (더 직관적).
+            const idx = mapEditParts.findIndex(p => p.type === 'start');
+            if (idx > -1) mapEditParts.splice(idx, 1);
         }
         mapEditParts.push({ type, x, y });
         drawEditMode();
@@ -682,7 +824,7 @@
         const { mx, my } = getEditMousePos(e);
         if (currentEditTool === 'platform' || currentEditTool === 'lava') {
             editDragStart = { x: mx, y: my };
-        } else if (currentEditTool === 'treasure' || currentEditTool === 'checkpoint') {
+        } else if (EDIT_POINT_TOOLS.includes(currentEditTool)) {
             placeEditPoint(currentEditTool, mx, my);
         } else if (currentEditTool === 'eraser') {
             eraseEditPartAt(mx, my);
@@ -724,7 +866,7 @@
         const { mx, my } = getEditMousePos(t);
         if (currentEditTool === 'platform' || currentEditTool === 'lava') {
             editDragStart = { x: mx, y: my };
-        } else if (currentEditTool === 'treasure' || currentEditTool === 'checkpoint') {
+        } else if (EDIT_POINT_TOOLS.includes(currentEditTool)) {
             placeEditPoint(currentEditTool, mx, my);
         } else if (currentEditTool === 'eraser') {
             eraseEditPartAt(mx, my);
@@ -817,6 +959,8 @@
         for (let i = mapEditParts.length - 1; i >= 0; i--) {
             const p = mapEditParts[i]; let hit = false;
             if (p.type === 'platform' || p.type === 'lava') { hit = mx >= p.x1 && mx <= p.x2 && my >= p.y1 && my <= p.y2; }
+            else if (p.type === 'firebar') { const dx = mx - p.x, dy = my - p.y; hit = (dx*dx + dy*dy) <= (FIREBAR_RADIUS + 20) * (FIREBAR_RADIUS + 20); }
+            else if (p.type === 'geyser') { hit = mx >= p.x - 30 && mx <= p.x + 30 && my >= p.y - 260 && my <= p.y + 10; }
             else { const dx = mx - p.x, dy = my - p.y; hit = (dx*dx + dy*dy) <= 30*30; }
             if (hit) { mapEditParts.splice(i, 1); drawEditMode(); return; }
         }
@@ -862,8 +1006,22 @@
         mapEditParts.forEach(p => {
             if (p.type === 'platform') { drawGroundPreview(editCtx, p.x1, p.y1, p.x2, p.y2); }
             else if (p.type === 'lava') { drawLavaPreview(editCtx, p.x1, p.y1, p.x2, p.y2); }
-            else if (p.type === 'treasure') { editCtx.font = '28px Arial'; editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle'; editCtx.fillText('💎', p.x, p.y); }
-            else if (p.type === 'checkpoint') { editCtx.font = '32px Arial'; editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle'; editCtx.fillText('🏁', p.x, p.y); }
+            else if (p.type === 'geyser') {
+                // 실제 게임에서 보이는 것과 비슷하게, 파란 물기둥 모양을 미리 보여줍니다.
+                editCtx.globalAlpha = 0.55; editCtx.fillStyle = '#3498db';
+                editCtx.fillRect(p.x - 30, p.y - 260, 60, 260);
+                editCtx.globalAlpha = 1;
+                editCtx.font = '26px Arial'; editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle'; editCtx.fillText('💧', p.x, p.y - 280);
+            } else if (p.type === 'firebar') {
+                // 회전 반경을 점선 원으로 보여줘서 어디까지 위험한지 미리 알 수 있게 합니다.
+                editCtx.strokeStyle = 'rgba(230,126,34,0.6)'; editCtx.lineWidth = 2; editCtx.setLineDash([6, 6]);
+                editCtx.beginPath(); editCtx.arc(p.x, p.y, FIREBAR_RADIUS, 0, Math.PI * 2); editCtx.stroke();
+                editCtx.setLineDash([]);
+                editCtx.font = '28px Arial'; editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle'; editCtx.fillText('🌀', p.x, p.y);
+            } else if (EDIT_POINT_ICONS[p.type]) {
+                editCtx.font = (p.type === 'checkpoint' ? '32px Arial' : '28px Arial'); editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle';
+                editCtx.fillText(EDIT_POINT_ICONS[p.type], p.x, p.y);
+            }
         });
 
         if (editDragStart && editHoverPos && (currentEditTool === 'platform' || currentEditTool === 'lava')) {
@@ -873,9 +1031,9 @@
             const y1 = Math.min(editDragStart.y, editHoverPos.my), y2 = Math.max(editDragStart.y, editHoverPos.my);
             editCtx.fillRect(x1, y1, x2 - x1, y2 - y1);
             editCtx.globalAlpha = 1;
-        } else if (editHoverPos && (currentEditTool === 'treasure' || currentEditTool === 'checkpoint')) {
+        } else if (editHoverPos && (EDIT_POINT_TOOLS.includes(currentEditTool))) {
             editCtx.globalAlpha = 0.5; editCtx.font = '28px Arial'; editCtx.textAlign = 'center'; editCtx.textBaseline = 'middle';
-            editCtx.fillText(currentEditTool === 'treasure' ? '💎' : '🏁', editHoverPos.mx, editHoverPos.my);
+            editCtx.fillText(EDIT_POINT_ICONS[currentEditTool] || '❓', editHoverPos.mx, editHoverPos.my);
             editCtx.globalAlpha = 1;
         }
         editCtx.restore();
@@ -911,6 +1069,11 @@
             else if (p.type === 'lava') { minimapCtx.fillStyle = '#e74c3c'; const x1 = toMiniX(p.x1), x2 = toMiniX(p.x2); minimapCtx.fillRect(x1, mh * 0.5, Math.max(2, x2 - x1), mh * 0.45); }
             else if (p.type === 'treasure') { minimapCtx.fillStyle = '#3498db'; const x = toMiniX(p.x); minimapCtx.beginPath(); minimapCtx.arc(x, mh * 0.3, 3, 0, Math.PI * 2); minimapCtx.fill(); }
             else if (p.type === 'checkpoint') { minimapCtx.fillStyle = '#f1c40f'; const x = toMiniX(p.x); minimapCtx.fillRect(x - 2, mh * 0.1, 4, mh * 0.4); }
+            else if (p.type === 'start') { minimapCtx.fillStyle = '#2ecc71'; const x = toMiniX(p.x); minimapCtx.fillRect(x - 2, mh * 0.1, 4, mh * 0.4); }
+            else if (p.type === 'monster') { minimapCtx.fillStyle = '#9b59b6'; const x = toMiniX(p.x); minimapCtx.beginPath(); minimapCtx.arc(x, mh * 0.5, 3, 0, Math.PI * 2); minimapCtx.fill(); }
+            else if (p.type === 'firebar') { minimapCtx.fillStyle = '#e67e22'; const x = toMiniX(p.x); minimapCtx.beginPath(); minimapCtx.arc(x, mh * 0.5, 3, 0, Math.PI * 2); minimapCtx.fill(); }
+            else if (p.type === 'geyser') { minimapCtx.fillStyle = '#3498db'; const x = toMiniX(p.x); minimapCtx.beginPath(); minimapCtx.arc(x, mh * 0.5, 3, 0, Math.PI * 2); minimapCtx.fill(); }
+            else if (p.type === 'spike') { minimapCtx.fillStyle = '#7f8c8d'; const x = toMiniX(p.x); minimapCtx.beginPath(); minimapCtx.arc(x, mh * 0.5, 3, 0, Math.PI * 2); minimapCtx.fill(); }
         });
         const viewWorldX1 = -editOffsetX / editScale, viewWorldX2 = (editCanvas.width - editOffsetX) / editScale;
         const vx1 = toMiniX(viewWorldX1), vx2 = toMiniX(viewWorldX2);
@@ -1062,11 +1225,13 @@
         }
     }
 
-    const { Engine, Render, Runner, World, Bodies, Body, Constraint, Events, Vector } = Matter;
+    const { Engine, Render, Runner, World, Bodies, Body, Constraint, Events, Vector, Vertices } = Matter;
     let engine, render, runner;
     let carChassis = null; let carWheels = []; let keys = {};
     let jumpCooldown = false; let remainingJumps = 0; let hasBoosters = 0; let hasSprings = 0; let hasCannons = 0; let canShoot = true;
+    let hasJacks = 0; let hasLifters = 0; let jackCooldown = false; // 유압 리커버리 잭 / 유압 램프 리프터
     let isClearing = false; let monsters = []; let enemyFireTimer = 0;
+    let customSpawnPos = null; let fireBars = []; // 커스텀 맵의 시작 위치 / 회전 불꽃 장애물 목록
     let laserTimer = 0; let laserY = 0; let laserWarning = null; let laserActive = null;
 
     window.addEventListener('keydown', (e) => keys[e.code] = true);
@@ -1091,6 +1256,8 @@
     bindTouchControlButton('tc-jump', ['Space']);
     bindTouchControlButton('tc-boost', ['ShiftLeft']);
     bindTouchControlButton('tc-cannon', ['KeyF']);
+    bindTouchControlButton('tc-jack', ['KeyR']);
+    bindTouchControlButton('tc-lifter', ['KeyE']);
 
     function stopPhysicsEngine() {
         if (render) { Render.stop(render); if (render.canvas) render.canvas.remove(); render = null; }
@@ -1100,7 +1267,7 @@
     }
 
     function startPlay(isCustom = false) {
-        if (vehicleParts.filter(p => p.type === 'frame').length < 1) { showToast("차체(프레임 조각)를 최소 1개 배치하세요!", "error"); return; }
+        if (vehicleParts.filter(p => p.type === 'frame' || p.type === 'frame-poly').length < 1) { showToast("차체(프레임 조각)를 최소 1개 배치하세요!", "error"); return; }
         if (vehicleParts.filter(p => p.type.startsWith('wheel')).length < 1) { showToast("바퀴를 달아주세요!", "error"); return; }
         switchMode('play'); document.getElementById('matter-container').classList.remove('hidden'); document.getElementById('play-ui').classList.remove('hidden');
         startStage(isCustom);
@@ -1113,7 +1280,8 @@
         if (runner) Runner.stop(runner);
         if (engine) Engine.clear(engine);
 
-        carWheels = []; carChassis = null; keys = {}; jumpCooldown = false; remainingJumps = 0; canShoot = true; monsters = []; enemyFireTimer = 0;
+        carWheels = []; carChassis = null; keys = {}; jumpCooldown = false; remainingJumps = 0; canShoot = true; monsters = []; enemyFireTimer = 0; jackCooldown = false;
+        customSpawnPos = null; fireBars = [];
         laserTimer = 0; laserWarning = null; laserActive = null;
         hideMessage(); initPhysicsEngine(isCustom);
     }
@@ -1122,6 +1290,7 @@
         engine = Engine.create();
         engine.positionIterations = 30; // 바퀴 분리 방지를 위한 반복 연산 강화
         engine.velocityIterations = 30;
+        engine.constraintIterations = 20; // 바퀴/부품을 차체에 붙잡아두는 Constraint 자체의 반복 연산도 강화 (기본값 2는 벽 충돌 등 강한 충격에서 부족했음)
 
         const world = engine.world; const container = document.getElementById('matter-container'); container.innerHTML = '';
         render = Render.create({ element: container, engine: engine, options: { width: window.innerWidth, height: window.innerHeight, wireframes: false, background: '#a4e4fc', hasBounds: true }});
@@ -1143,20 +1312,31 @@
             for(let i=0; i<engine.pairs.list.length; i++) {
                 const pair = engine.pairs.list[i];
                 if (pair.bodyA.isSensor || pair.bodyB.isSensor || pair.bodyA.label.includes('monster') || pair.bodyB.label.includes('monster')) continue;
-                const isCarA = pair.bodyA === carChassis || carWheels.includes(pair.bodyA) || pair.bodyA.label === 'bulldozer' || pair.bodyA.label === 'carPart';
-                const isCarB = pair.bodyB === carChassis || carWheels.includes(pair.bodyB) || pair.bodyB.label === 'bulldozer' || pair.bodyB.label === 'carPart';
+                // [핵심 버그 수정] 프레임이 여러 조각(복합 바디)일 때, 물리 엔진의 충돌 pair는 차체 전체(carChassis)가
+                // 아니라 실제로 부딪힌 "개별 조각" 바디를 담고 있어서 pair.bodyX === carChassis 비교가 항상 실패했습니다.
+                // 그 결과 바퀴가 아니라 프레임 조각이 바닥에 닿아도 "공중에 떠있다"고 잘못 판단해서, 방향키를 누르면
+                // 공중 회전 보정(Body.setAngularVelocity)이 계속 걸려 차체가 팽이처럼 미친듯이 돌아버렸습니다.
+                // .parent는 단일 조각이든 복합 바디든 항상 최상위 차체를 가리키므로 이걸로 비교해야 정확합니다.
+                const isCarA = pair.bodyA.parent === carChassis || carWheels.includes(pair.bodyA) || pair.bodyA.label === 'bulldozer' || pair.bodyA.label === 'drill' || pair.bodyA.label === 'carPart';
+                const isCarB = pair.bodyB.parent === carChassis || carWheels.includes(pair.bodyB) || pair.bodyB.label === 'bulldozer' || pair.bodyB.label === 'drill' || pair.bodyB.label === 'carPart';
                 if (isCarA !== isCarB) { isTouchingGround = true; break; }
             }
 
             if (isTouchingGround) { remainingJumps = hasSprings; }
             else {
-                if (keys['ArrowRight'] || keys['KeyD']) Body.setAngularVelocity(carChassis, 0.04);
-                if (keys['ArrowLeft'] || keys['KeyA']) Body.setAngularVelocity(carChassis, -0.04);
+                // [안정성 개선] 공중 회전 보정 값을 낮추고, 최대로 기울어질 수 있는 각도에 한계를 뒀습니다.
+                // 바퀴가 차체 중심에서 멀리 떨어진 자유 형태 차량(예: 세로로 긴 모양)은 같은 회전 속도라도
+                // 바퀴가 훨씬 넓은 반경으로 휘둘리기 때문에, 방향키를 오래 누른 채 오래 공중에 떠있으면
+                // 계속 회전이 쌓여서 결국 90도 이상 돌아가며 "부서진 것처럼" 보였습니다.
+                const AIR_TILT_MAX_ANGLE = 0.5; // 약 28도까지만 능동적으로 기울임 (그 이상은 착지 후 자연스럽게 원상복구)
+                if ((keys['ArrowRight'] || keys['KeyD']) && carChassis.angle < AIR_TILT_MAX_ANGLE) Body.setAngularVelocity(carChassis, 0.018);
+                if ((keys['ArrowLeft'] || keys['KeyA']) && carChassis.angle > -AIR_TILT_MAX_ANGLE) Body.setAngularVelocity(carChassis, -0.018);
             }
 
             if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && !jumpCooldown && remainingJumps > 0) {
                 remainingJumps--; Body.setVelocity(carChassis, { x: carChassis.velocity.x, y: Math.min(carChassis.velocity.y, 0) });
-                Body.applyForce(carChassis, carChassis.position, { x: 0, y: -0.15 * carChassis.mass });
+                // [밸런스 조정] 점프 높이 너프: 기존 0.15 -> 0.105 (약 30% 감소)
+                Body.applyForce(carChassis, carChassis.position, { x: 0, y: -0.105 * carChassis.mass });
                 jumpCooldown = true; setTimeout(() => { jumpCooldown = false; }, 300);
             }
             if ((keys['ShiftLeft'] || keys['ShiftRight']) && hasBoosters > 0) {
@@ -1165,6 +1345,28 @@
             }
             if (keys['KeyF'] && canShoot && hasCannons > 0) {
                 shootCannon(world); canShoot = false; setTimeout(() => { canShoot = true; }, 800);
+            }
+            // 유압 리커버리 잭: 차체가 크게 기울어져 있을 때(뒤집힘 포함) R키로 강하게 회전시켜 바로 세워줍니다.
+            // 평평할 때는 낭비되지 않도록, 일정 각도 이상 기울어져 있을 때만 작동합니다.
+            if (keys['KeyR'] && hasJacks > 0 && !jackCooldown) {
+                const wrapped = ((carChassis.angle % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI; // -π~π로 정규화
+                if (Math.abs(wrapped) > 0.6) {
+                    Body.setAngularVelocity(carChassis, -Math.sign(wrapped) * 0.15 * hasJacks);
+                    Body.applyForce(carChassis, carChassis.position, { x: 0, y: -0.06 * carChassis.mass });
+                    jackCooldown = true; setTimeout(() => { jackCooldown = false; }, 700);
+                }
+            }
+            // 유압 램프 리프터: E키를 누르고 있는 동안 진행 방향 쪽 앞부분을 들어올려(웨일리처럼) 가파른
+            // 경사로나 절벽을 오를 때 도움을 줍니다.
+            if (keys['KeyE'] && hasLifters > 0) {
+                const halfSpan = Math.max(60, (carChassis.bounds.max.x - carChassis.bounds.min.x) / 2);
+                const facing = (keys['ArrowRight'] || keys['KeyD']) ? 1 : ((keys['ArrowLeft'] || keys['KeyA']) ? -1 : (carChassis.velocity.x >= 0 ? 1 : -1));
+                const liftForce = 0.02 * hasLifters * carChassis.mass;
+                const liftPoint = {
+                    x: carChassis.position.x + Math.cos(carChassis.angle) * halfSpan * facing,
+                    y: carChassis.position.y + Math.sin(carChassis.angle) * halfSpan * facing
+                };
+                Body.applyForce(carChassis, liftPoint, { x: 0, y: -liftForce });
             }
 
             monsters.forEach(m => {
@@ -1177,6 +1379,15 @@
                     const dx = carChassis.position.x - m.position.x;
                     if (Math.abs(dx) < 1200) Body.applyForce(m, m.position, {x: Math.sign(dx) * 0.0005 * m.mass, y: 0});
                 }
+            });
+
+            // 🌀 회전 불꽃 장애물: 매 프레임 각도를 조금씩 돌려서 화염 구슬들의 위치를 갱신합니다.
+            fireBars.forEach(fb => {
+                fb.angle += FIREBAR_SPEED;
+                fb.balls.forEach((ball, i) => {
+                    const a = fb.angle + (Math.PI * 2 * i) / fb.balls.length;
+                    Body.setPosition(ball, { x: fb.cx + Math.cos(a) * FIREBAR_RADIUS, y: fb.cy + Math.sin(a) * FIREBAR_RADIUS });
+                });
             });
 
             const stMod = currentStage % 10;
@@ -1218,16 +1429,58 @@
             if (carChassis.position.y > 2000) { isClearing = true; showMessage("추락하여 파괴되었습니다!", "bg-red-500", "scale-110"); setTimeout(() => startStage(isCustom), 1500); }
         });
 
+        // [안전장치] 벽에 세게 부딪히거나 점프가 겹치는 등 드문 상황에서 물리엔진이 한 프레임에 지나치게 큰
+        // 속도/회전을 만들어내면 차체가 하늘 끝까지 날아가거나 팽이처럼 무한히 도는 것처럼 보일 수 있습니다.
+        // (부품들이 실제로 떨어지는 건 아니고 - Constraint는 계속 붙어있음 - 움직임 자체가 통제 불능이 되는 것)
+        // 정상적인 점프/부스터/주행 속도보다 넉넉히 높은 한도로 매 프레임 속도를 잘라내어 이런 폭주를 막습니다.
+        Events.on(engine, 'afterUpdate', () => {
+            if (!carChassis || isClearing) return;
+            const MAX_CHASSIS_SPEED = 45;
+            const MAX_CHASSIS_ANGULAR_SPEED = 0.12;
+            const speedSq = carChassis.velocity.x * carChassis.velocity.x + carChassis.velocity.y * carChassis.velocity.y;
+            if (speedSq > MAX_CHASSIS_SPEED * MAX_CHASSIS_SPEED) {
+                const scale = MAX_CHASSIS_SPEED / Math.sqrt(speedSq);
+                Body.setVelocity(carChassis, { x: carChassis.velocity.x * scale, y: carChassis.velocity.y * scale });
+            }
+            if (Math.abs(carChassis.angularVelocity) > MAX_CHASSIS_ANGULAR_SPEED) {
+                Body.setAngularVelocity(carChassis, Math.sign(carChassis.angularVelocity) * MAX_CHASSIS_ANGULAR_SPEED);
+            }
+        });
+
+        // 💧 간헐천: 물기둥 안에 차량이 닿아있는 "동안" 계속 위로 밀어올립니다 (한 번만 발동하는 충돌이 아니라
+        // 지속적인 접촉이 필요하므로, 'collisionActive' 이벤트로 매 프레임 겹침 여부를 확인합니다).
+        Events.on(engine, 'collisionActive', (event) => {
+            if (!carChassis || isClearing) return;
+            event.pairs.forEach(pair => {
+                const bodyA = pair.bodyA, bodyB = pair.bodyB;
+                if (bodyA.label !== 'geyser' && bodyB.label !== 'geyser') return;
+                const other = bodyA.label === 'geyser' ? bodyB : bodyA;
+                if (other.parent === carChassis || carWheels.includes(other) || other.label === 'carPart' || other.label === 'bulldozer' || other.label === 'drill') {
+                    Body.applyForce(carChassis, carChassis.position, { x: 0, y: -0.02 * carChassis.mass });
+                }
+            });
+        });
+
         Events.on(engine, 'collisionStart', (event) => {
             if (isClearing) return;
             event.pairs.forEach(pair => {
                 const bodyA = pair.bodyA, bodyB = pair.bodyB;
                 const isDozerHit = (bodyA.label === 'bulldozer' && bodyB.label === 'breakable') || (bodyB.label === 'bulldozer' && bodyA.label === 'breakable');
                 const isCannonHit = (bodyA.label === 'cannonball' && bodyB.label === 'breakable') || (bodyB.label === 'cannonball' && bodyA.label === 'breakable');
+                const isDrillWallHit = (bodyA.label === 'drill' && bodyB.label === 'breakable') || (bodyB.label === 'drill' && bodyA.label === 'breakable');
 
-                if (isDozerHit || isCannonHit) {
+                if (isDozerHit || isCannonHit || isDrillWallHit) {
                     const breakableBody = bodyA.label === 'breakable' ? bodyA : bodyB; World.remove(engine.world, breakableBody);
                     if (isDozerHit) { const dozer = bodyA.label === 'bulldozer' ? bodyA : bodyB; dozer.durability -= 1; if (dozer.durability <= 0) World.remove(engine.world, dozer); }
+                    // 드릴은 불도저와 달리 내구도 소모 없이 벽을 즉시 부수고 계속 회전하며 남아있습니다.
+                }
+
+                // 스핀 드릴이 몬스터와 부딪히면(대포알처럼) 즉시 제거합니다 - 몬스터가 차체에 달라붙기 전에 먼저 처리.
+                const isDrillMonsterHit = (bodyA.label === 'drill' && bodyB.label === 'monster') || (bodyB.label === 'drill' && bodyA.label === 'monster');
+                if (isDrillMonsterHit) {
+                    const monster = bodyA.label === 'monster' ? bodyA : bodyB;
+                    World.remove(engine.world, monster); if (monster.constraint) World.remove(engine.world, monster.constraint);
+                    const idx = monsters.indexOf(monster); if (idx > -1) monsters.splice(idx, 1);
                 }
 
                 const isMonsterHit = (bodyA.label === 'cannonball' && bodyB.label === 'monster') || (bodyB.label === 'cannonball' && bodyA.label === 'monster');
@@ -1237,7 +1490,7 @@
                 const isEnemyHit = (bodyA.label === 'enemyCannonball' || bodyB.label === 'enemyCannonball' || bodyA.label === 'enemyLaser' || bodyB.label === 'enemyLaser');
                 if (isEnemyHit) {
                     const other = (bodyA.label === 'enemyCannonball' || bodyA.label === 'enemyLaser') ? bodyB : bodyA;
-                    if (other === carChassis || carWheels.includes(other) || other.label === 'carPart') {
+                    if (other.parent === carChassis || carWheels.includes(other) || other.label === 'carPart') {
                         isClearing = true;
                         showMessage("💥 레이저/포탄에 맞아 파괴되었습니다!", "bg-red-600", "scale-110");
                         setTimeout(() => startStage(isCustom), 1500);
@@ -1248,16 +1501,28 @@
                 const isLavaHit = (bodyA.label === 'lava' || bodyB.label === 'lava');
                 if (isLavaHit) {
                     const other = bodyA.label === 'lava' ? bodyB : bodyA;
-                    if (other === carChassis || carWheels.includes(other) || other.label === 'carPart' || other.label === 'bulldozer') {
+                    if (other.parent === carChassis || carWheels.includes(other) || other.label === 'carPart' || other.label === 'bulldozer' || other.label === 'drill') {
                         isClearing = true;
                         showMessage("🔥 용암에 빠져 파괴되었습니다!", "bg-red-600", "scale-110");
                         setTimeout(() => startStage(isCustom), 1500);
                     }
                 }
 
+                // 🌀 회전 불꽃 / 🔺 가시 장애물 접촉 시 파괴 (용암과 동일하게 즉시 실패 처리)
+                const isFireBarHit = (bodyA.label === 'firebar' || bodyB.label === 'firebar');
+                const isSpikeHit = (bodyA.label === 'spike' || bodyB.label === 'spike');
+                if (isFireBarHit || isSpikeHit) {
+                    const other = (bodyA.label === 'firebar' || bodyA.label === 'spike') ? bodyB : bodyA;
+                    if (other.parent === carChassis || carWheels.includes(other) || other.label === 'carPart' || other.label === 'bulldozer' || other.label === 'drill') {
+                        isClearing = true;
+                        showMessage(isFireBarHit ? "🌀 회전 불꽃에 부딪혀 파괴되었습니다!" : "🔺 가시에 찔려 파괴되었습니다!", "bg-red-600", "scale-110");
+                        setTimeout(() => startStage(isCustom), 1500);
+                    }
+                }
+
                 if (bodyA.label === 'monster' || bodyB.label === 'monster') {
                     const monster = bodyA.label === 'monster' ? bodyA : bodyB; const other = bodyA.label === 'monster' ? bodyB : bodyA;
-                    if ((other === carChassis || carWheels.includes(other) || other.label === 'carPart') && !monster.isAttached) {
+                    if ((other.parent === carChassis || carWheels.includes(other) || other.label === 'carPart') && !monster.isAttached) {
                         monster.isAttached = true; monster.render.sprite.texture = ASSET_URIS['slime-attached'];
                         const constraint = Constraint.create({ bodyA: other, bodyB: monster, stiffness: 0.8, length: 50, render: { visible: false }});
                         monster.constraint = constraint; World.add(engine.world, constraint);
@@ -1275,7 +1540,7 @@
                 }
 
                 if (bodyA.label === 'checkpoint' || bodyB.label === 'checkpoint') {
-                    if (bodyA === carChassis || bodyB === carChassis || carWheels.includes(bodyA) || carWheels.includes(bodyB) || bodyA.label==='carPart' || bodyB.label==='carPart') {
+                    if (bodyA.parent === carChassis || bodyB.parent === carChassis || carWheels.includes(bodyA) || carWheels.includes(bodyB) || bodyA.label==='carPart' || bodyB.label==='carPart') {
                         isClearing = true;
                         if (!isCustom) { currentStage++; if(currentStage > maxStageReached) maxStageReached = currentStage; updateStatusUI(); showMessage(`✨ 스테이지 클리어! ✨`, "bg-green-500", "scale-110"); setTimeout(() => startStage(false), 2000); }
                         else { playerGold += 100; updateStatusUI(); showMessage(`의뢰 완료! 💰100G`, "bg-yellow-500", "scale-110"); setTimeout(() => switchMode('online'), 2000); }
@@ -1296,19 +1561,69 @@
     }
 
     function createCarFromBuild(world) {
-        const START_X = 300, START_Y = 100;
+        // 맵 에디터에서 🚗시작 위치를 지정했다면 그 위치에서, 아니면 기본 위치(300,100)에서 시작합니다.
+        const START_X = customSpawnPos ? customSpawnPos.x : 300;
+        const START_Y = customSpawnPos ? customSpawnPos.y : 100;
         const carGroup = Body.nextGroup(true); // 동일 그룹은 서로 튕겨내지 않음 (Ghosting)
-        hasBoosters = 0; hasSprings = 0; hasCannons = 0;
+        hasBoosters = 0; hasSprings = 0; hasCannons = 0; hasJacks = 0; hasLifters = 0;
 
-        // 1. 차체 뼈대: 자유롭게 배치한 프레임 조각들을 모아 하나의 단단한 복합 바디로 용접합니다.
-        const frameParts = vehicleParts.filter(p => p.type === 'frame');
-        const frameBodies = frameParts.map(p => {
-            const w = Math.max(4, Math.abs(p.x2 - p.x1)), h = Math.max(4, Math.abs(p.y2 - p.y1));
-            const cx = START_X + (p.x1 + p.x2) / 2, cy = START_Y + (p.y1 + p.y2) / 2;
-            return Bodies.rectangle(cx, cy, w, h, {
-                density: 0.05, friction: 0.5, restitution: 0.1, collisionFilter: { group: carGroup },
-                render: { sprite: { texture: getFrameSVGDataURI(w, h, p.color || '#8e44ad') } }
-            });
+        // 1. 차체 뼈대: 자유롭게 배치한 프레임 조각들(사각 + 자유 윤곽선)을 모아 하나의 단단한 복합 바디로 용접합니다.
+        const frameParts = vehicleParts.filter(p => p.type === 'frame' || p.type === 'frame-poly');
+        const frameBodies = [];
+        frameParts.forEach(p => {
+            if (p.type === 'frame') {
+                const w = Math.max(4, Math.abs(p.x2 - p.x1)), h = Math.max(4, Math.abs(p.y2 - p.y1));
+                const cx = START_X + (p.x1 + p.x2) / 2, cy = START_Y + (p.y1 + p.y2) / 2;
+                frameBodies.push(Bodies.rectangle(cx, cy, w, h, {
+                    density: 0.05, friction: 0.5, restitution: 0.1, collisionFilter: { group: carGroup },
+                    render: { sprite: { texture: getFrameSVGDataURI(w, h, p.color || '#8e44ad') } }
+                }));
+            } else if (p.type === 'frame-poly') {
+                let pts = p.points;
+                if (!pts || pts.length < 3) return;
+                // [방어적 처리] 저장된 예전 데이터 등에 시작점과 거의 같은 위치의 마지막 점(도형을 닫으며
+                // 생긴 중복점)이 남아있으면, 길이 0인 변 때문에 도형 생성이 조용히 실패할 수 있습니다.
+                // (tryPlaceFreehandFrame에서 새로 그릴 때는 이미 제거하지만, 안전하게 여기서도 한 번 더 확인합니다.)
+                while (pts.length > 3) {
+                    const first = pts[0], last = pts[pts.length - 1];
+                    const dx = last.x - first.x, dy = last.y - first.y;
+                    if (dx * dx + dy * dy < 16) pts = pts.slice(0, -1);
+                    else break;
+                }
+                // Bodies.fromVertices의 x,y는 "결과 도형의 무게중심을 이 좌표로 두라"는 목표 위치이므로,
+                // 꼭짓점 좌표는 설계 원점(0,0) 기준 상대좌표든 절대좌표든 상관없이 항상 올바르게 배치됩니다.
+                const avgX = pts.reduce((s, pt) => s + pt.x, 0) / pts.length;
+                const avgY = pts.reduce((s, pt) => s + pt.y, 0) / pts.length;
+                const worldPts = pts.map(pt => ({ x: START_X + pt.x, y: START_Y + pt.y }));
+                const cx = START_X + avgX, cy = START_Y + avgY;
+                const polyRenderOpts = {
+                    density: 0.05, friction: 0.5, restitution: 0.1, collisionFilter: { group: carGroup },
+                    render: { fillStyle: p.color || '#8e44ad', strokeStyle: '#2d3436', lineWidth: 2 }
+                };
+                let polyBody = null;
+                try { polyBody = Bodies.fromVertices(cx, cy, [worldPts], polyRenderOpts, false); } catch (e) { polyBody = null; }
+                if (!polyBody) {
+                    // [방어적 폴백] 스스로 교차하는 등 너무 뒤틀린 도형이라 오목 분해 자체가 실패하면,
+                    // 사용자가 그린 조각이 통째로 사라지지 않도록 볼록 껍질(convex hull)로라도 만들어 씁니다.
+                    try {
+                        const hullVerts = Vertices.hull(worldPts.map(pt => ({ x: pt.x, y: pt.y })));
+                        if (hullVerts && hullVerts.length >= 3) polyBody = Bodies.fromVertices(cx, cy, [hullVerts], polyRenderOpts, false);
+                    } catch (e) { polyBody = null; }
+                }
+                if (!polyBody) return; // 그래도 실패하면 방어적으로 건너뜁니다
+                if (polyBody.parts.length > 1) {
+                    // [핵심 버그 수정] 오목한(concave) 자유 윤곽선은 poly-decomp가 여러 개의 볼록 조각으로
+                    // 쪼개는데, 그 결과물(polyBody)은 이미 그 자체로 복합 바디입니다
+                    // (parts[0] = 전체를 감싸는 자동 생성 컨테이너, parts[1..] = 실제 볼록 조각들).
+                    // 이 복합 바디를 통째로 다른 프레임 조각과 함께 바깥쪽 Body.create({parts:[...]})에
+                    // 넣으면 Matter.js가 중첩된 복합 바디를 제대로 펼쳐내지 못해 지오메트리 일부를
+                    // 잃어버립니다 (직접 테스트로 확인됨). 따라서 컨테이너(index 0)는 버리고 실제
+                    // 볼록 조각들만 꺼내 바깥쪽 배열에 평평하게(flatten) 추가합니다.
+                    frameBodies.push(...polyBody.parts.slice(1));
+                } else {
+                    frameBodies.push(polyBody);
+                }
+            }
         });
         if (frameBodies.length === 0) return; // startPlay()에서 이미 검증하지만 방어적으로 한 번 더 확인
         // 조각이 1개뿐이면 원래 방식 그대로 단일 바디를 그대로 쓰고, 2개 이상일 때만 복합 바디로 용접합니다.
@@ -1329,7 +1644,7 @@
 
         // 2. 부품 생성 및 차체 중심 기준 오프셋 연결 (프레임 조각은 위에서 이미 처리했으므로 건너뜁니다)
         vehicleParts.forEach(part => {
-            if (part.type === 'frame') return;
+            if (part.type === 'frame' || part.type === 'frame-poly') return;
             const px = START_X + part.x;
             const py = START_Y + part.y;
             let partBody = null; let isRigid = true;
@@ -1349,6 +1664,13 @@
             } else if (part.type === 'bulldozer') {
                 partBody = Bodies.rectangle(px, py, 40, 40, { label: 'bulldozer', collisionFilter: { group: carGroup }, render: { sprite: { texture: ASSET_URIS['bulldozer'] } } });
                 partBody.durability = 3;
+            } else if (part.type === 'jack') {
+                hasJacks++; partBody = Bodies.rectangle(px, py, BODY_BLOCK_SIZE, BODY_BLOCK_SIZE, { label:'carPart', render: { sprite: { texture: ASSET_URIS['jack'] } }, density: 0.02, collisionFilter: { group: carGroup } });
+            } else if (part.type === 'lifter') {
+                hasLifters++; partBody = Bodies.rectangle(px, py, BODY_BLOCK_SIZE, BODY_BLOCK_SIZE, { label:'carPart', render: { sprite: { texture: ASSET_URIS['lifter'] } }, density: 0.02, collisionFilter: { group: carGroup } });
+            } else if (part.type === 'drill') {
+                // 드릴은 불도저처럼 별도 label('drill')을 가진 독립 바디입니다 - 벽/몬스터 충돌 감지에 씁니다.
+                partBody = Bodies.rectangle(px, py, 40, 40, { label: 'drill', collisionFilter: { group: carGroup }, render: { sprite: { texture: ASSET_URIS['drill'] } } });
             }
 
             if (partBody) {
@@ -1359,15 +1681,19 @@
                         bodyA: carChassis, bodyB: partBody,
                         pointA: { x: part.x - centroidOffsetX, y: part.y - centroidOffsetY },
                         pointB: { x: 0, y: 0 },
-                        stiffness: 1, length: 0, render: { visible: false }
+                        stiffness: 1, length: 0, render: { visible: true, type: 'line', anchors: false, lineWidth: 3, strokeStyle: '#4a2f5e' }
                     }));
                 } else {
                     // 바퀴 (서스펜션 강화)
+                    // [시각적 개선] 실제로는 항상 단단히 붙어있지만(수학적으로 검증 완료), 바퀴가 차체 중심에서
+                    // 멀리 떨어진 자유 형태 차량이 공중에서 회전하면 바퀴만 멀리 떨어져 보여서 "부서졌다"고
+                    // 오해하기 쉬웠습니다. Matter.js가 이 연결축을 실제로 선으로 그려주도록 켜서, 회전 중에도
+                    // 바퀴가 차체와 계속 이어져 있다는 걸 눈으로 바로 확인할 수 있게 했습니다.
                     World.add(world, Constraint.create({
                         bodyA: carChassis, bodyB: partBody,
                         pointA: { x: part.x - centroidOffsetX, y: part.y - centroidOffsetY },
                         pointB: { x: 0, y: 0 },
-                        stiffness: 0.95, damping: 0.5, length: 0, render: { visible: false }
+                        stiffness: 0.95, damping: 0.5, length: 0, render: { visible: true, type: 'line', anchors: false, lineWidth: 4, strokeStyle: '#4a2f5e' }
                     }));
                 }
             }
@@ -1402,7 +1728,32 @@
             else if (p.type === 'lava') { createLava(world, p.x1, p.y1, p.x2, p.y2); }
             else if (p.type === 'treasure') { createTreasureGem(world, p.x, p.y); }
             else if (p.type === 'checkpoint') { createCheckpoint(world, p.x, p.y); }
+            else if (p.type === 'start') { customSpawnPos = { x: p.x, y: p.y }; }
+            else if (p.type === 'monster') { spawnMonster(world, p.x, p.y); }
+            else if (p.type === 'firebar') { createFireBar(world, p.x, p.y); }
+            else if (p.type === 'geyser') { createGeyser(world, p.x, p.y); }
+            else if (p.type === 'spike') { createSpike(world, p.x, p.y); }
         });
+    }
+
+    // 🌀 회전 불꽃: 중심점을 축으로 화염 구슬 여러 개가 빙글빙글 도는 마리오 스타일 장애물. 닿으면 즉시 실패합니다.
+    function createFireBar(world, cx, cy) {
+        const balls = [];
+        for (let i = 0; i < FIREBAR_BALL_COUNT; i++) {
+            const ball = Bodies.circle(cx, cy, 14, { isStatic: true, isSensor: true, label: 'firebar', render: { fillStyle: '#e67e22', strokeStyle: '#c0392b', lineWidth: 2 } });
+            World.add(world, ball);
+            balls.push(ball);
+        }
+        fireBars.push({ cx, cy, angle: Math.random() * Math.PI * 2, balls });
+    }
+    // 💧 간헐천: 위로 솟는 물기둥 - 그 안에 있으면 계속 위로 밀려 올라갑니다 (즉시 실패가 아니라, 튕겨나가는 트릭 요소).
+    function createGeyser(world, x, groundY) {
+        const h = 260, w = 60;
+        World.add(world, Bodies.rectangle(x, groundY - h / 2, w, h, { isStatic: true, isSensor: true, label: 'geyser', render: { fillStyle: 'rgba(52,152,219,0.5)', strokeStyle: 'rgba(255,255,255,0.6)', lineWidth: 2 } }));
+    }
+    // 🔺 가시 장애물: 작은 뾰족한 함정 - 닿으면 즉시 실패합니다 (용암보다 작고 정밀한 배치가 필요한 장애물용).
+    function createSpike(world, x, y) {
+        World.add(world, Bodies.polygon(x, y, 3, 22, { isStatic: true, isSensor: true, label: 'spike', render: { fillStyle: '#95a5a6', strokeStyle: '#2c3e50', lineWidth: 2 } }));
     }
 
     function createTerrain(world, stage) {
@@ -1540,8 +1891,8 @@
     // 시작 시 모든 기능 초기화
     const hadSavedProgress = loadProgress();
     // 완전히 처음 시작하는 경우엔 빈 캔버스 대신 기본 프레임 조각 1개를 무료로 줍니다.
-    if (!hadSavedProgress && vehicleParts.filter(p => p.type === 'frame').length === 0) {
-        vehicleParts.push({ type: 'frame', x1: -150, y1: -20, x2: 150, y2: 20, color: paintColor, cost: 0 });
+    if (!hadSavedProgress && vehicleParts.filter(p => p.type === 'frame' || p.type === 'frame-poly').length === 0) {
+        vehicleParts.push({ type: 'frame-poly', points: [{x:-150,y:-20},{x:150,y:-20},{x:150,y:20},{x:-150,y:20}], color: paintColor, cost: 0 });
     }
     progressLoaded = true;
     updateStatusUI();
