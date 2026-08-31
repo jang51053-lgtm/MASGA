@@ -73,10 +73,11 @@
                 <p class="text-[11px] text-gray-400 mt-2 leading-snug">⬜ 그리기가 번거로우면 기본 프레임을 클릭 한 번으로 바로 배치하고, ✏️ 자유 프레임으로 원하는 윤곽선을 직접 그려서 나만의 모양을 만들 수도 있어요. 둘 다 같이 써도 돼요!</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="grid grid-cols-2 gap-2 mb-2">
                 <button id="tool-pan" class="tool-btn interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-gray-600 transition text-blue-300 text-sm font-bold" onclick="selectTool('pan')">🖐️ 화면 이동</button>
                 <button id="tool-eraser" class="tool-btn interactive px-2 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg hover:bg-red-900 transition text-red-400 text-sm font-bold" onclick="selectTool('eraser')">🗑️ 환불(제거)</button>
             </div>
+            <button id="tool-clear-all" class="interactive w-full mb-4 px-2 py-2 bg-red-900 border-2 border-red-700 rounded-lg hover:bg-red-800 transition text-red-300 text-sm font-bold" onclick="clearAllVehicleParts()">💥 차량 전체 삭제 (전액 환불)</button>
 
             <h3 class="text-gray-300 font-bold mb-2 text-sm border-b border-gray-600 pb-1">부품 상점</h3>
             <div class="flex flex-col gap-2 flex-grow mb-4 overflow-y-auto">
@@ -188,6 +189,7 @@
         <div class="flex justify-between items-start w-[350px]">
             <div class="bg-gray-800 bg-opacity-80 p-4 rounded-xl shadow-lg border border-gray-700 backdrop-blur-sm pointer-events-auto">
                 <h2 id="stage-text" class="text-xl font-black text-green-400 mb-2">🏁 스테이지 1</h2>
+                <div id="health-display" class="text-xl mb-2 tracking-wider">❤️❤️❤️</div>
                 <div class="text-sm text-gray-300 space-y-1 font-bold">
                     <p>◀ ▶ / A D : 바퀴 굴리기 / 공중 회전</p>
                     <p class="text-green-300">SPACE : 다중 점프 (스프링)</p>
@@ -196,6 +198,7 @@
                     <p class="text-orange-300">R : 유압 리커버리 잭 (뒤집혔을 때 복구)</p>
                     <p class="text-blue-300">E : 유압 램프 리프터 (경사/절벽 오르기)</p>
                     <p class="text-gray-400">🌀 드릴은 장착만 하면 부딪힌 벽/몬스터를 자동으로 부숴요</p>
+                    <p class="text-pink-300">👾 몬스터는 대포로 쏘거나 위에서 밟으면 제거! 옆에서 부딪히면 체력이 줄어요</p>
                 </div>
             </div>
         </div>
@@ -687,6 +690,18 @@
         }
     }, { passive: false });
     buildCanvas.addEventListener('touchcancel', () => { isPanning = false; hoverPos = null; freehandPoints = null; }, { passive: false });
+
+    // 차량 제작소의 부품을 한 번에 모두 지웁니다. 개별 환불(제거)과 동일하게 쓴 골드를 전액 돌려줍니다.
+    function clearAllVehicleParts() {
+        if (vehicleParts.length === 0) { showToast("이미 비어있어요!"); return; }
+        let refund = 0;
+        vehicleParts.forEach(p => { refund += (p.type === 'frame' || p.type === 'frame-poly') ? (p.cost || 0) : (PRICES[p.type] || 0); });
+        playerGold += refund;
+        vehicleParts = [];
+        updateStatusUI();
+        drawBuildMode();
+        showToast(`차량을 전체 삭제했어요! (환불: ${refund}G)`);
+    }
 
     function applyTool(x, y) {
         if (currentTool === 'eraser') {
@@ -1231,6 +1246,7 @@
     let jumpCooldown = false; let remainingJumps = 0; let hasBoosters = 0; let hasSprings = 0; let hasCannons = 0; let canShoot = true;
     let hasJacks = 0; let hasLifters = 0; let jackCooldown = false; // 유압 리커버리 잭 / 유압 램프 리프터
     let isClearing = false; let monsters = []; let enemyFireTimer = 0;
+    const MAX_HEALTH = 3; let carHealth = MAX_HEALTH; // 몬스터에 닿으면 줄어드는 차량 체력 (0이 되면 파괴)
     let customSpawnPos = null; let fireBars = []; // 커스텀 맵의 시작 위치 / 회전 불꽃 장애물 목록
     let laserTimer = 0; let laserY = 0; let laserWarning = null; let laserActive = null;
 
@@ -1283,7 +1299,15 @@
         carWheels = []; carChassis = null; keys = {}; jumpCooldown = false; remainingJumps = 0; canShoot = true; monsters = []; enemyFireTimer = 0; jackCooldown = false;
         customSpawnPos = null; fireBars = [];
         laserTimer = 0; laserWarning = null; laserActive = null;
+        carHealth = MAX_HEALTH; updateHealthDisplay();
         hideMessage(); initPhysicsEngine(isCustom);
+    }
+
+    // 스테이지 시작 시 가득 찬 하트로, 몬스터에 부딪힐 때마다 하트가 하나씩 줄어드는 걸로 표시합니다.
+    function updateHealthDisplay() {
+        const el = document.getElementById('health-display');
+        if (!el) return;
+        el.textContent = '❤️'.repeat(Math.max(0, carHealth)) + '🖤'.repeat(Math.max(0, MAX_HEALTH - carHealth));
     }
 
     function initPhysicsEngine(isCustom) {
@@ -1463,6 +1487,20 @@
 
         Events.on(engine, 'collisionStart', (event) => {
             if (isClearing) return;
+            // 먼저 "몬스터 즉사" 판정(드릴/대포알)부터 전체 pair를 한 번 훑어 모두 처리합니다.
+            // Matter.js는 같은 충돌 이벤트 안의 pair 순서를 보장하지 않으므로, 몬스터가 드릴과 차체(또는 바퀴)에
+            // 동시에 겹쳐 pair가 2개 생기는 경우에도, 아래쪽 "부착/피해" 판정이 먼저 실행되어 이미 죽은 몬스터에게
+            // 피해를 주는 일이 없도록 즉사 판정을 항상 먼저 끝냅니다.
+            event.pairs.forEach(pair => {
+                const bodyA = pair.bodyA, bodyB = pair.bodyB;
+                const isDrillMonsterHit = (bodyA.label === 'drill' && bodyB.label === 'monster') || (bodyB.label === 'drill' && bodyA.label === 'monster');
+                const isCannonMonsterHit = (bodyA.label === 'cannonball' && bodyB.label === 'monster') || (bodyB.label === 'cannonball' && bodyA.label === 'monster');
+                if (isDrillMonsterHit || isCannonMonsterHit) {
+                    const monster = bodyA.label === 'monster' ? bodyA : bodyB;
+                    World.remove(engine.world, monster); if (monster.constraint) World.remove(engine.world, monster.constraint);
+                    const idx = monsters.indexOf(monster); if (idx > -1) monsters.splice(idx, 1);
+                }
+            });
             event.pairs.forEach(pair => {
                 const bodyA = pair.bodyA, bodyB = pair.bodyB;
                 const isDozerHit = (bodyA.label === 'bulldozer' && bodyB.label === 'breakable') || (bodyB.label === 'bulldozer' && bodyA.label === 'breakable');
@@ -1474,17 +1512,6 @@
                     if (isDozerHit) { const dozer = bodyA.label === 'bulldozer' ? bodyA : bodyB; dozer.durability -= 1; if (dozer.durability <= 0) World.remove(engine.world, dozer); }
                     // 드릴은 불도저와 달리 내구도 소모 없이 벽을 즉시 부수고 계속 회전하며 남아있습니다.
                 }
-
-                // 스핀 드릴이 몬스터와 부딪히면(대포알처럼) 즉시 제거합니다 - 몬스터가 차체에 달라붙기 전에 먼저 처리.
-                const isDrillMonsterHit = (bodyA.label === 'drill' && bodyB.label === 'monster') || (bodyB.label === 'drill' && bodyA.label === 'monster');
-                if (isDrillMonsterHit) {
-                    const monster = bodyA.label === 'monster' ? bodyA : bodyB;
-                    World.remove(engine.world, monster); if (monster.constraint) World.remove(engine.world, monster.constraint);
-                    const idx = monsters.indexOf(monster); if (idx > -1) monsters.splice(idx, 1);
-                }
-
-                const isMonsterHit = (bodyA.label === 'cannonball' && bodyB.label === 'monster') || (bodyB.label === 'cannonball' && bodyA.label === 'monster');
-                if (isMonsterHit) { const monster = bodyA.label === 'monster' ? bodyA : bodyB; World.remove(engine.world, monster); if(monster.constraint) World.remove(engine.world, monster.constraint); const idx = monsters.indexOf(monster); if(idx>-1) monsters.splice(idx, 1); }
 
                 // 충돌 감지에 레이저(enemyLaser) 추가
                 const isEnemyHit = (bodyA.label === 'enemyCannonball' || bodyB.label === 'enemyCannonball' || bodyA.label === 'enemyLaser' || bodyB.label === 'enemyLaser');
@@ -1522,10 +1549,37 @@
 
                 if (bodyA.label === 'monster' || bodyB.label === 'monster') {
                     const monster = bodyA.label === 'monster' ? bodyA : bodyB; const other = bodyA.label === 'monster' ? bodyB : bodyA;
-                    if ((other.parent === carChassis || carWheels.includes(other) || other.label === 'carPart') && !monster.isAttached) {
-                        monster.isAttached = true; monster.render.sprite.texture = ASSET_URIS['slime-attached'];
-                        const constraint = Constraint.create({ bodyA: other, bodyB: monster, stiffness: 0.8, length: 50, render: { visible: false }});
-                        monster.constraint = constraint; World.add(engine.world, constraint);
+                    // monsters.includes(monster): 같은 충돌 이벤트 안에서 드릴/대포알이 이 몬스터를 먼저 제거했다면
+                    // (몬스터가 차체의 다른 부분과도 동시에 겹쳐 별도 pair가 생긴 경우) 이미 목록에서 빠졌으므로
+                    // 여기서 다시 부착/피해 판정을 하지 않습니다 - 안 그러면 즉사시킨 몬스터에게도 체력이 깎입니다.
+                    if ((other.parent === carChassis || carWheels.includes(other) || other.label === 'carPart') && !monster.isAttached && monsters.includes(monster)) {
+                        // 몬스터를 잡는 방법은 대포로 쏘거나(위쪽 isMonsterHit 처리) 마리오처럼 "위에서 밟는" 것입니다.
+                        // 밟은 부위(other)의 중심이 몬스터 중심보다 확실히 위에 있고, 차체가 아래로 떨어지는 중이면 스톰프로 판정합니다.
+                        // 그 외(옆/아래에서 부딪힘)에는 몬스터가 달라붙고 체력이 줄어듭니다.
+                        const monsterRadius = monster.circleRadius || 22;
+                        const isStomp = other.position.y < monster.position.y - monsterRadius * 0.3 && carChassis.velocity.y > 0.5;
+                        if (isStomp) {
+                            World.remove(engine.world, monster);
+                            const idx = monsters.indexOf(monster); if (idx > -1) monsters.splice(idx, 1);
+                            Body.setVelocity(carChassis, { x: carChassis.velocity.x, y: -7 }); // 마리오처럼 살짝 튕겨오릅니다
+                            showToast("👾 몬스터를 밟아서 제거했어요!");
+                        } else {
+                            monster.isAttached = true; monster.render.sprite.texture = ASSET_URIS['slime-attached'];
+                            const constraint = Constraint.create({ bodyA: other, bodyB: monster, stiffness: 0.8, length: 50, render: { visible: false }});
+                            monster.constraint = constraint; World.add(engine.world, constraint);
+                            // 몬스터에 닿으면 체력이 1 줄어들고, 0이 되면 차량이 파괴됩니다.
+                            if (!isClearing) {
+                                carHealth = Math.max(0, carHealth - 1);
+                                updateHealthDisplay();
+                                if (carHealth <= 0) {
+                                    isClearing = true;
+                                    showMessage("👾 몬스터에게 당해 파괴되었습니다!", "bg-red-600", "scale-110");
+                                    setTimeout(() => startStage(isCustom), 1500);
+                                } else {
+                                    showToast(`👾 몬스터에게 부딪혔어요! (체력 ${carHealth}/${MAX_HEALTH})`, "error");
+                                }
+                            }
+                        }
                     }
                 }
 
